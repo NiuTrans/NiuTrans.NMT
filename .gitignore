@@ -8,7 +8,6 @@ CMakeCache.txt
 cmake_install.cmake
 *.bin
 *.pdf
-*.tar.gz
 /niutrans*
 niutensor.input
 tiny_9_1.bin.fp32
@@ -22,3 +21,10 @@ test_data*
 en-de.en.niutensor.temp.input
 fbis.train
 en-de.de
+train.train
+train.de
+valid.de
+convert_log
+valgrind.log
+train.log
+train.log.2
