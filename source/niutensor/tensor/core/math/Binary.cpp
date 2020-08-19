@@ -169,7 +169,7 @@ XTensor funcName(const XTensor &a, T num)                                       
     XTensor b(&a);                                                                   \
     b.SetTMPFlag();                                                                  \
     _funcName(&a, &b, num);                                                          \
-    if(a.enableGrad){                                                                \
+    if(a.enableGrad && X_ENABLE_GRAD){                                                                \
         XLink::MakeLink(&a, NULL, &b, operationId);                                  \
         XLink::AddParamToHead(&b, (DTYPE)num);                                       \
     }                                                                                \
@@ -187,7 +187,7 @@ void funcName(const XTensor &a, XTensor &b, T num)                              
         InitTensorV2(&b, &a);                                                        \
     }                                                                                \
     _funcName(&a, &b, num);                                                          \
-    if (a.enableGrad) {                                                              \
+    if (a.enableGrad && X_ENABLE_GRAD) {                                                              \
         XLink::MakeLink(&a, NULL, &b, operationId);                                  \
         XLink::AddParamToHead(&b, (DTYPE)num);                                       \
     }                                                                                \

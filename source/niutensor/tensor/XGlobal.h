@@ -184,6 +184,7 @@ extern int nnnTotal;
 
 /* print calling stack for debug in linux */
 extern void PrintCallStack();
+extern void print_trace();
 
 #endif // !WIN32
 

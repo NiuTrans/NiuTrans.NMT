@@ -318,7 +318,7 @@ XTensor MatrixMulBatched(const XTensor &a, MATRIX_TRANS_TYPE transposedA, const 
     _MatrixMulBatched(&a, transposedA, &b, transposedB, &c, alpha, 0, parallelRunner);
 
     /* tensor connections */
-    if (a.enableGrad && b.enableGrad) {
+    if (a.enableGrad && b.enableGrad && X_ENABLE_GRAD) {
         XLink::MakeLink(&a, &b, &c, MATH_MATRIXMULBATCHED);
         XLink::AddParamToHeadTrans(&c, transposedA);
         XLink::AddParamToHeadTrans(&c, transposedB);
@@ -376,7 +376,7 @@ XTensor MatrixMulBatched(const XTensor &a, const XTensor &b,
     _MatrixMulBatched(&a, X_NOTRANS, &b, X_NOTRANS, &c, alpha, 0, parallelRunner);
 
     /* tensor connections */
-    if (a.enableGrad && b.enableGrad) {
+    if (a.enableGrad && b.enableGrad && X_ENABLE_GRAD) {
         XLink::MakeLink(&a, &b, &c, MATH_MATRIXMULBATCHED);
         XLink::AddParamToHeadTrans(&c, X_NOTRANS);
         XLink::AddParamToHeadTrans(&c, X_NOTRANS);

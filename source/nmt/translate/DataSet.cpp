@@ -1,9 +1,5 @@
 /* NiuTrans.NMT - an open-source neural machine translation system.
- * Copyright (C) 2020
- * NiuTrans Research
- * and
- * Natural Language Processing Lab, Northeastern University.
- * All rights reserved.
+ * Copyright (C) 2020 NiuTrans Research. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -79,7 +75,7 @@ void DataSet::LoadDataToBuffer()
                 : line.size() - indices[i];
             string word = line.substr(indices[i], offset);
             if (srcVocab.word2id.find(word) == srcVocab.word2id.end())
-                values.Add(3);
+                values.Add(UNK);
             else
                 values.Add(srcVocab.word2id.at(word));
         }
@@ -105,7 +101,7 @@ void DataSet::LoadDataToBuffer()
 }
 
 /*
-load a mini-batch to the device
+load a mini-batch to the device (for translating)
 >> batchEnc - a tensor to store the batch of input
 >> paddingEnc - a tensor to store the batch of paddings
 >> minSentBatch - the minimum number of sentence batch
@@ -138,13 +134,13 @@ UInt64List DataSet::LoadBatch(XTensor* batchEnc, XTensor* paddingEnc,
     float* paddingValues = new float[realBatchSize * maxLen];
 
     for (int i = 0; i < realBatchSize * maxLen; i++) {
-        batchValues[i] = 1;
-        paddingValues[i] = 0.0F;
+        batchValues[i] = PAD;
+        paddingValues[i] = 1.0F;
     }
 
-    size_t cur = 0;
+    size_t curSrc = 0;
 
-    /* left padding */
+    /* right padding */
     UInt64List infos;
     size_t totalLength = 0;
 
@@ -152,11 +148,11 @@ UInt64List DataSet::LoadBatch(XTensor* batchEnc, XTensor* paddingEnc,
         infos.Add(inputBuffer[bufferUsed + i]->id);
         totalLength += inputBuffer[bufferUsed + i]->values.Size();
 
-        cur = maxLen * (i + 1) - inputBuffer[bufferUsed + i]->values.Size();
-        for (int j = 0; j < inputBuffer[bufferUsed + i]->values.Size(); j++) {
-            batchValues[cur] = inputBuffer[bufferUsed + i]->values[j];
-            paddingValues[cur++] = 1.0F;
-        }
+        curSrc = maxLen * i;
+        for (int j = 0; j < inputBuffer[bufferUsed + i]->values.Size(); j++)
+            batchValues[curSrc++] = inputBuffer[bufferUsed + i]->values[j];
+        while (curSrc < maxLen * (i + 1))
+            paddingValues[curSrc++] = 0;
     }
     infos.Add(totalLength);
 

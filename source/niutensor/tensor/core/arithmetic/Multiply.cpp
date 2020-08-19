@@ -213,7 +213,7 @@ XTensor Multiply(const XTensor &a, const XTensor &b, int leadingDim)
             _Multiply(&a, &b, &c, alpha, leadingDim);
 
             /* tensor connections */
-            if (a.enableGrad && b.enableGrad) {
+            if (a.enableGrad && b.enableGrad && X_ENABLE_GRAD) {
                 XLink::MakeLink(&a, &b, &c, MATH_MULTIPLY);
             }
         }
@@ -222,7 +222,7 @@ XTensor Multiply(const XTensor &a, const XTensor &b, int leadingDim)
             _MultiplyDim(&a, &b, &c, n, alpha);
 
             /* tensor connections */
-            if (a.enableGrad && b.enableGrad) {
+            if (a.enableGrad && b.enableGrad && X_ENABLE_GRAD) {
                 XLink::MakeLink(&a, &b, &c, MATH_MULTIPLYDIM);
                 XLink::AddParamToHeadInt(&c, n);
             }
@@ -274,7 +274,7 @@ void Multiply(const XTensor &a, const XTensor &b, XTensor &c, DTYPE alpha, int l
             /* call _Multiply function */
             _Multiply(&a, &b, &c, alpha, leadingDim);
 
-            if (a.enableGrad && b.enableGrad) {
+            if (a.enableGrad && b.enableGrad && X_ENABLE_GRAD) {
                 /* tensor connections */
                 XLink::MakeLink(&a, &b, &c, MATH_MULTIPLY);
             }
@@ -283,7 +283,7 @@ void Multiply(const XTensor &a, const XTensor &b, XTensor &c, DTYPE alpha, int l
             /* call _MultiplyDim function */
             _MultiplyDim(&a, &b, &c, n, alpha);
 
-            if (a.enableGrad && b.enableGrad) {
+            if (a.enableGrad && b.enableGrad && X_ENABLE_GRAD) {
                 /* tensor connections */
                 XLink::MakeLink(&a, &b, &c, MATH_MULTIPLYDIM);
                 XLink::AddParamToHeadInt(&c, n);

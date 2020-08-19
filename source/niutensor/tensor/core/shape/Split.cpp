@@ -216,7 +216,7 @@ XTensor Split(const XTensor &s, int whereToSplit, int splitNum)
     _Split(&s, &t, whereToSplit, splitNum);
         
     /* tensor connections */
-    if (s.enableGrad) {
+    if (s.enableGrad && X_ENABLE_GRAD) {
         XLink::MakeLink(&s, NULL, &t, SHAPE_SPLIT);
         XLink::AddParamToHeadInt(&t, whereToSplit);
         XLink::AddParamToHeadInt(&t, splitNum);
@@ -252,7 +252,7 @@ void Split(const XTensor &s, XTensor &t, int whereToSplit, int splitNum)
     /* call _Split function */
     _Split(&s, &t, whereToSplit, splitNum);
 
-    if (s.enableGrad) {
+    if (s.enableGrad && X_ENABLE_GRAD) {
         /* tensor connections */
         XLink::MakeLink(&s, NULL, &t, SHAPE_SPLIT);
         XLink::AddParamToHeadInt(&t, whereToSplit);
@@ -410,7 +410,7 @@ void Split(const XTensor &big, TensorList &smalls, int whereToSplit, int splitNu
     for(int i = 0; i < smalls.count; i++){
         XTensor * s = (XTensor*)smalls.Get(i);
 
-        if (s->enableGrad) {
+        if (s->enableGrad && X_ENABLE_GRAD) {
             XLink::MakeLink(&big, NULL, s, SHAPE_SPLIT_LIST);
             XLink::AddParamToHeadInt(s, whereToSplit);
 

@@ -34,6 +34,7 @@ namespace nts { // namespace nts(NiuTrans.Tensor)
 extern bool X_ENABLE_GRAD;
 
 #define DISABLE_GRAD X_ENABLE_GRAD=false
+#define ENABLE_GRAD X_ENABLE_GRAD=true
 
 /* initialize a XTensor V2 */
 void InitTensorV2(XTensor * tensor,

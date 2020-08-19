@@ -222,7 +222,7 @@ XTensor Merge(const XTensor &s, int whereToMerge, int leadingDim)
     _Merge(&s, &t, whereToMerge, leadingDim);
 
     /* tensor connections */
-    if (s.enableGrad) {
+    if (s.enableGrad && X_ENABLE_GRAD) {
         XLink::MakeLink(&s, NULL, &t, SHAPE_MERGE);
         XLink::AddParamToHeadInt(&t, whereToMerge);
         XLink::AddParamToHeadInt(&t, leadingDim);
@@ -263,7 +263,7 @@ void Merge(const XTensor &s, XTensor &t, int whereToMerge, int leadingDim)
     /* call _Merge function */
     _Merge(&s, &t, whereToMerge, leadingDim);
 
-    if (s.enableGrad) {
+    if (s.enableGrad && X_ENABLE_GRAD) {
         /* tensor connections */
         XLink::MakeLink(&s, NULL, &t, SHAPE_MERGE);
         XLink::AddParamToHeadInt(&t, whereToMerge);
@@ -413,7 +413,7 @@ XTensor Merge(const TensorList &smalls, int whereToMerge)
     _Merge(&smalls, &big, whereToMerge);
     
     /* tensor connections */
-    if (tensor->enableGrad) {
+    if (tensor->enableGrad && X_ENABLE_GRAD) {
         XLink::MakeLink(&smalls, &big, SHAPE_MERGE_LIST);
         XLink::AddParamToHeadInt(&big, whereToMerge);
     }
@@ -456,7 +456,7 @@ XTensor Merge(const XTensor &smallA, const XTensor &smallB, int whereToMerge)
     _Merge(&smalls, &big, whereToMerge);
 
     /* tensor connections */
-    if (smallA.enableGrad) {
+    if (smallA.enableGrad && X_ENABLE_GRAD) {
         XLink::MakeLink(&smalls, &big, SHAPE_MERGE_LIST);
         XLink::AddParamToHeadInt(&big, whereToMerge);
     }

@@ -144,7 +144,7 @@ XTensor Transpose(const XTensor &a, const int i, const int j)
     _Transpose(&a, &b, i, j);
     
     /* tensor connection */
-    if (a.enableGrad) {
+    if (a.enableGrad && X_ENABLE_GRAD) {
         XLink::MakeLink(&a, NULL, &b, SHAPE_TRANSPOSE);
         XLink::AddParamToHeadInt(&b, i);
         XLink::AddParamToHeadInt(&b, j);

@@ -1,9 +1,5 @@
 /* NiuTrans.NMT - an open-source neural machine translation system.
- * Copyright (C) 2020
- * NiuTrans Research
- * and
- * Natural Language Processing Lab, Northeastern University.
- * All rights reserved.
+ * Copyright (C) 2020 NiuTrans Research. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -87,6 +83,7 @@ void AttDecoder::InitModel(Config& config)
     enDeAtt = new Attention[nlayer];
     enDeAttLayerNorms = new LN[nlayer];
     fnnLayerNorms = new LN[nlayer];
+
     selfAttCache = new Cache[nlayer];
     enDeAttCache = new Cache[nlayer];
     if (preNorm)
@@ -100,6 +97,8 @@ void AttDecoder::InitModel(Config& config)
         fnnLayerNorms[i].InitModel(config);
         enDeAtt[i].InitModel(config);
         enDeAttLayerNorms[i].InitModel(config);
+        selfAttCache[i].enable = true;
+        enDeAttCache[i].enable = true;
     }
     if (preNorm)
         decoderLayerNorm->InitModel(config);
@@ -119,6 +118,7 @@ XTensor AttDecoder::Make(XTensor& inputDec, XTensor& outputEnc, XTensor* mask,
                          XTensor* maskEncDec, int nstep, bool isTraining)
 {
     XTensor x;
+
     x = embedder.Make(inputDec, true, isTraining, nstep);
 
     /* dropout */

@@ -155,7 +155,7 @@ XTensor Gather(XTensor &s, XTensor &index)
     _Gather(&s, &t, &index);
 
     /* tensor connection */
-    if (s.enableGrad)
+    if (s.enableGrad && X_ENABLE_GRAD)
     {
         XLink::MakeLink(&s, &index, &t, MOVEMENT_GATHER);
     }

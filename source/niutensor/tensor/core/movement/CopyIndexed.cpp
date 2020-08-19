@@ -261,7 +261,7 @@ XTensor CopyIndexed(const XTensor & s, int dim,
     list.Add((XTensor*)&tgtIndex);
 
     /* tensor connection */
-    if (s.enableGrad) {
+    if (s.enableGrad && X_ENABLE_GRAD) {
         XLink::MakeLink(&list, &t, MOVEMENT_COPYINDEXED);
         XLink::AddParamToHeadInt(&t, dim);
         XLink::AddParamToHeadInt(&t, copyNum);
@@ -319,7 +319,7 @@ XTensor CopyIndexed(const XTensor &s, int dim, int * srcIndex, int indexSize, in
     memcpy(saveTgtIndex, tgtIndex, indexSize * sizeof(int));
 
     /* tensor connection */
-    if (s.enableGrad) {
+    if (s.enableGrad && X_ENABLE_GRAD) {
         XLink::MakeLink(&s, NULL, &t, MOVEMENT_COPYINDEXED);
         XLink::AddParamToHeadInt(&t, dim);
         XLink::AddParamToHeadPointer(&t, saveSrcIndex);

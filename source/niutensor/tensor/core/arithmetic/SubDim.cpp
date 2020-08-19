@@ -165,7 +165,7 @@ XTensor SubDim(const XTensor &a, const XTensor &b, int n, DTYPE beta)
     _SubDim(&a, &b, &c, n, beta);
 
     /* tensor connections */
-    if (a.enableGrad && b.enableGrad) {
+    if (a.enableGrad && b.enableGrad && X_ENABLE_GRAD) {
         XLink::MakeLink(&a, &b, &c, MATH_SUBDIM);
         XLink::AddParamToHeadInt(&c, n);
         XLink::AddParamToHead(&c, beta);
@@ -196,7 +196,7 @@ void SubDim(const XTensor &a, const XTensor &b, XTensor &c, int n, DTYPE beta)
     /* call _Sub function */
     _SubDim(&a, &b, &c, n, beta);
 
-    if (a.enableGrad && b.enableGrad) {
+    if (a.enableGrad && b.enableGrad && X_ENABLE_GRAD) {
         /* tensor connections */
         XLink::MakeLink(&a, &b, &c, MATH_SUBDIM);
         XLink::AddParamToHeadInt(&c, n);

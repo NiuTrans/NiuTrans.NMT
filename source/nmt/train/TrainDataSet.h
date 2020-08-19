@@ -19,13 +19,12 @@
  * $Modified by: HU Chi (huchinlp@gmail.com) 2020-06
  */
 
-#ifndef __DATASET_H__
-#define __DATASET_H__
+#ifndef __TRAIN_DATASET_H__
+#define __TRAIN_DATASET_H__
 
 #include <cstdio>
 #include <vector>
 #include <fstream>
-#include "Vocab.h"
 
 #include "../../niutensor/tensor/XList.h"
 #include "../../niutensor/tensor/XTensor.h"
@@ -36,69 +35,84 @@
 using namespace std;
 
 namespace nts {
-/* the struct of tokenized input */
-struct Example {
+
+/* a class of sentence pairs for training */
+struct TrainExample {
+
+    /* id of the sentence pair */
     int id;
-    IntList values;
+
+    /* source language setence (tokenized) */
+    IntList srcSent;
+
+    /* target language setence (tokenized) */
+    IntList tgtSent;
+
+    /* the key used to shuffle items in a bucket */
+    int key;
+
+    /* the key used to shuffle buckets */
+    int bucketKey;
 };
 
-/* the struct of tokenized output */
-struct Result {
-    int id;
-    IntList res;
-};
-
-/* A `DataSet` is associated with a file which contains variable length data.*/
-struct DataSet {
+/* A `TrainDataSet` is associated with a file which contains training data. */
+struct TrainDataSet {
 public:
     /* the data buffer */
-    InputBufferType inputBuffer;
+    TrainBufferType buffer;
 
     /* a list of empty line number */
     IntList emptyLines;
 
-    /* the result buffer */
-    OutputBufferType outputBuffer;
-
     /* the pointer to file stream */
-    ifstream* fp;
+    FILE* fp;
 
-    /* size of used data in buffer */
+    /* current index in the buffer */
+    size_t curIdx;
+
+    /* size of used data in the buffer */
     size_t bufferUsed;
 
-    /* the source vocabulary */
-    Vocab srcVocab;
+    /* size of the bucket used for grouping sentences */
+    size_t bucketSize;
 
-    /* the target vocabulary */
-    Vocab tgtVocab;
+    /* indicates whether it is used for training */
+    bool isTraining;
 
 public:
 
-    /* sort the input by length */
-    void SortInput();
+    /* sort the input by length (in descending order) */
+    void SortByLength();
 
-    /* reorder the output by ids */
-    void SortOutput();
+    /* sort buckets by key (in descending order) */
+    void SortBucket();
+
+    /* sort the output by key (in descending order) */
+    void SortInBucket(int begin, int end);
 
     /* load data from a file to the buffer */
     void LoadDataToBuffer();
 
     /* generate a mini-batch */
     UInt64List LoadBatch(XTensor* batchEnc, XTensor* paddingEnc,
-        size_t sBatch, size_t wBatch, int devID);
+                         XTensor* batchDec, XTensor* paddingDec, XTensor* label,
+                         size_t minSentBatch, size_t batchSize, int devID);
 
     /* initialization function */
-    void Init(const char* dataFile, const char* srcVocabFN, const char* tgtVocabFN);
+    void Init(const char* dataFile, int bucketSize, bool training);
 
     /* check if the buffer is empty */
     bool IsEmpty();
 
-    /* dump the translations to a file */
-    void DumpRes(const char* ofn);
+    /* reset the buffer */
+    void ClearBuf();
+
+    /* group data into buckets with similar length */
+    void BuildBucket();
 
     /* de-constructor */
-    ~DataSet();
+    ~TrainDataSet();
 };
 }
 
-#endif // __DATASET_H__
+#endif // __TRAIN_DATASET_H__

@@ -142,7 +142,7 @@ XTensor Softmax(const XTensor &x, int leadDim)
     _Softmax(&x, &y, ld);
 
     /* tensor connection */
-    if (x.enableGrad) {
+    if (x.enableGrad && X_ENABLE_GRAD) {
         XLink::MakeLink(&x, NULL, &y, FUNC_SOFTMAX);
         XLink::AddParamToHeadInt(&y, ld);
     }
@@ -163,7 +163,7 @@ void Softmax(const XTensor &x, XTensor &y, int leadDim)
     /* call _Softmax function */
     _Softmax(&x, &y, ld);
 
-    if (x.enableGrad) {
+    if (x.enableGrad && X_ENABLE_GRAD) {
         /* tensor connection */
         XLink::MakeLink(&x, NULL, &y, FUNC_SOFTMAX);
         XLink::AddParamToHeadInt(&y, ld);

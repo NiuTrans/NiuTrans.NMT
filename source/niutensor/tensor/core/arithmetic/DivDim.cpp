@@ -165,7 +165,7 @@ XTensor DivDim(const XTensor &a, const XTensor &b, int n, DTYPE alpha)
     _DivDim(&a, &b, &c, n, alpha);
     
     /* tensor connections */
-    if (a.enableGrad && b.enableGrad) {
+    if (a.enableGrad && b.enableGrad && X_ENABLE_GRAD) {
         XLink::MakeLink(&a, &b, &c, MATH_DIVDIM);
         XLink::AddParamToHeadInt(&c, n);
         XLink::AddParamToHead(&c, alpha);
@@ -196,7 +196,7 @@ void DivDim(const XTensor &a, const XTensor &b, XTensor &c, int n, DTYPE alpha)
     /* call _Div function */
     _DivDim(&a, &b, &c, n, alpha);
 
-    if (a.enableGrad && b.enableGrad) {
+    if (a.enableGrad && b.enableGrad && X_ENABLE_GRAD) {
         /* tensor connections */
         XLink::MakeLink(&a, &b, &c, MATH_DIVDIM);
         XLink::AddParamToHeadInt(&c, n);

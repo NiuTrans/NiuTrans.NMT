@@ -55,7 +55,7 @@ XTensor Identity(const XTensor &x)
     _Identity(&x, &y);
 
     /* tensor connection */
-    if (x.enableGrad) {
+    if (x.enableGrad && X_ENABLE_GRAD) {
         XLink::MakeLink(&x, NULL, &y, FUNC_IDENTITY);
     }
 
@@ -71,7 +71,7 @@ void Identity(const XTensor &x, XTensor &y)
     /* call _Identity function */
     _Identity(&x, &y);
 
-    if (x.enableGrad) {
+    if (x.enableGrad && X_ENABLE_GRAD) {
         /* tensor connection */
         XLink::MakeLink(&x, NULL, &y, FUNC_IDENTITY);
     }

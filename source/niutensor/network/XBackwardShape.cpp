@@ -65,6 +65,7 @@ void XShapeGrad::MakeGrad(XTensor * node, bool isEfficient)
     else if (operID == SHAPE_UNSQUEEZE)
         GradUnsqueeze(node, isEfficient);
     else{
+        PrintCallStack();
         ShowNTErrors("TODO!");
     }
 }

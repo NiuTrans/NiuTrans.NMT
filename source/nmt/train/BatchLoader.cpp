@@ -1,9 +1,5 @@
 /* NiuTrans.NMT - an open-source neural machine translation system.
- * Copyright (C) 2020
- * NiuTrans Research
- * and
- * Natural Language Processing Lab, Northeastern University.
- * All rights reserved.
+ * Copyright (C) 2020 NiuTrans Research. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +22,7 @@
 #include "../Utility.h"
 #include "../../niutensor/tensor/XUtility.h"
 #include "../../niutensor/tensor/core/CHeader.h"
-#include "../../niutensor/network//XNoder.h"
+#include "../../niutensor/network/XNoder.h"
 
 namespace nmt
 {
@@ -565,15 +561,11 @@ int BatchLoader::LoadBatchMT(FILE* file,
     InitTensor2D(paddingDec, sCount, maxDec, X_FLOAT, devID);
     InitTensor2D(label, sCount, maxDec, X_INT, devID);
 
-    //InitTensor(gold, 3, dimsDec, X_FLOAT, devID);
-
-    batchEnc->SetZeroAll();
+    batchEnc->SetDataFixed(1);
     paddingEnc->SetZeroAll();
-    batchDec->SetZeroAll();
+    batchDec->SetDataFixed(1);
     paddingDec->SetZeroAll();
     label->SetZeroAll();
-
-    //gold->SetZeroAll();
 
     int wCountEnc = 0;
     int wCountDec = 0;
@@ -588,9 +580,16 @@ int BatchLoader::LoadBatchMT(FILE* file,
 
     //MTYPE * goldOffsets = new MTYPE[sc * maxDec / 2];
 
-    memset(batchEncValues, 0, sizeof(int) * batchEnc->unitNum);
+    for (int i = 0; i < batchEnc->unitNum; i++)
+        batchEncValues[i] = 1;
+    for (int i = 0; i < batchDec->unitNum; i++)
+        batchDecValues[i] = 1;
+    for (int i = 0; i < batchDec->unitNum; i++)
+        labelValues[i] = 1;
+
+    /*memset(batchEncValues, 0, sizeof(int) * batchEnc->unitNum);
     memset(batchDecValues, 0, sizeof(int) * batchDec->unitNum);
-    memset(labelValues, 0, sizeof(int) * batchDec->unitNum);
+    memset(labelValues, 0, sizeof(int) * batchDec->unitNum);*/
 
     /* batch of the source-side sequences */
     for (int s = seq; s < seq + sc; s += 2) {
@@ -607,12 +606,6 @@ int BatchLoader::LoadBatchMT(FILE* file,
     batchEnc->SetData(batchEncValues, batchEnc->unitNum);
     paddingEnc->SetDataBatched(paddingEncOffsets, 1.0F, wCountEnc);
 
-    //XTensor * tmp = NewTensorBuf(paddingEnc, devID);
-    //_ConvertDataType(batchEnc, tmp);
-    //tmp->Dump(stderr, "tmp:");
-    //_NotEqual(tmp, paddingEnc, 0);
-    //DelTensorBuf(tmp);
-
     /* batch of the target-side sequences */
     for (int s = seq + 1; s < seq + sc; s += 2) {
         int len = isDoubledEnd ? seqLen[s] : seqLen[s] - 1;
@@ -622,30 +615,22 @@ int BatchLoader::LoadBatchMT(FILE* file,
             int num = buf[seqOffset[s] + w];
             batchDecValues[batchDec->GetOffset2D(sent, w)] = num;
 
-            //paddingDecOffsets[wCountDec] = paddingDec->GetOffset2D(sent, w);
             if (w < len - 1) {
                 paddingDecOffsets[wCountPad++] = paddingDec->GetOffset2D(sent, w);
                 wCount++;
             }
             if (w > 0) {
-
-                //goldOffsets[wGold++] = gold->GetOffset3D(sent, w - 1, buf[seqOffset[s] + w]);
                 labelValues[label->GetOffset2D(sent, w - 1)] = buf[seqOffset[s] + w];
             }
             if (w == len - 1) {
                 if (isDoubledEnd) {
-
-                    //goldOffsets[wGold++] = gold->GetOffset3D(sent, w, buf[seqOffset[s] + w]);
                     labelValues[label->GetOffset2D(sent, w)] = buf[seqOffset[s] + w];
                 }
                 else {
-
-                    //goldOffsets[wGold++] = gold->GetOffset3D(sent, w, buf[seqOffset[s] + w + 1]);
                     labelValues[label->GetOffset2D(sent, w)] = buf[seqOffset[s] + w + 1];
                 }
             }
 
-            //wCount++;
             wCountDec++;
             if (seqs != NULL)
                 seqs[seqSize++] = buf[seqOffset[s] + w];
@@ -661,20 +646,11 @@ int BatchLoader::LoadBatchMT(FILE* file,
     label->SetData(labelValues, label->unitNum);
     paddingDec->SetDataBatched(paddingDecOffsets, 1.0F, wCountPad);
 
-    //XTensor * tmp2 = NewTensorBuf(paddingDec, devID);
-    //_ConvertDataType(batchDec, tmp2);
-    //_NotEqual(tmp2, paddingDec, 0);
-    //DelTensorBuf(tmp2);
-
-    //gold->SetDataBatched(goldOffsets, 1.0F, wGold);
-
     delete[] batchEncValues;
     delete[] batchDecValues;
     delete[] labelValues;
     delete[] paddingEncOffsets;
     delete[] paddingDecOffsets;
-
-    //delete[] goldOffsets;
 
     return sc;
 }

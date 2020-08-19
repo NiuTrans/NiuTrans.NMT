@@ -1,9 +1,5 @@
 /* NiuTrans.NMT - an open-source neural machine translation system.
- * Copyright (C) 2020
- * NiuTrans Research
- * and
- * Natural Language Processing Lab, Northeastern University.
- * All rights reserved.
+ * Copyright (C) 2020 NiuTrans Research. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -69,6 +65,9 @@ void FNN::InitModel(Config& config)
     float scale = 1.0F;
     _SetDataFanInOut(&w1, scale);
     _SetDataFanInOut(&w2, scale);
+
+    w1.SetDataRand(-(DTYPE)sqrt(6.0F / inSize), (DTYPE)sqrt(6.0F / inSize));
+    w2.SetDataRand(-(DTYPE)sqrt(6.0F / hSize), (DTYPE)sqrt(6.0F / hSize));
 
     b1.SetZeroAll();
     b2.SetZeroAll();

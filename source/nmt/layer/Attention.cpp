@@ -1,9 +1,5 @@
 /* NiuTrans.NMT - an open-source neural machine translation system.
- * Copyright (C) 2020
- * NiuTrans Research
- * and
- * Natural Language Processing Lab, Northeastern University.
- * All rights reserved.
+ * Copyright (C) 2020 NiuTrans Research. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -83,6 +79,9 @@ void Attention::InitModel(Config& config)
     biasQ.SetZeroAll();
     biasV.SetZeroAll();
     biasO.SetZeroAll();
+
+    biasK.SetDataRand(-(DTYPE)sqrt(6.0F / d), (DTYPE)sqrt(6.0F / d));
+    biasV.SetDataRand(-(DTYPE)sqrt(6.0F / d), (DTYPE)sqrt(6.0F / d));
 }
 
 /*
@@ -108,7 +107,7 @@ XTensor Attention::Make(XTensor& k, XTensor& q, XTensor& v, XTensor* mask,
 
     q2 = MulAndShift(q, weightQ, biasQ);
 
-    if (!cache || isTraining) {
+    if (!cache || isTraining || !(cache->enable)) {
         /* self attention for encoder layers */
         k2 = MulAndShift(k, weightK, biasK);
         v2 = MulAndShift(v, weightV, biasV);
@@ -254,7 +253,7 @@ XTensor Attention::MakeRPRAttention(XTensor& k, XTensor& q, XTensor& v,
         relativeKey = ConvertDataType(relativeKey, X_FLOAT);
     }
 
-    ScaleAndShiftMe(qheads, 1.0F / float(nhead));
+    qheads = ScaleAndShift(qheads, 1.0F / float(nhead));
 
     dot = RPDotProduct(qheads, kheads, relativeKey, true);
 
@@ -311,8 +310,8 @@ XTensor Attention::GetRPEmbedding(const int lenQ, const int lenKV,
         embMatrix = Unsqueeze(range, 0, lenQ);
     }
 
-    ClipMe(embMatrix, -float(maxRelativeLen), float(maxRelativeLen));
-    ScaleAndShiftMe(embMatrix, 1.0F, float(maxRelativeLen));
+    embMatrix = Clip(embMatrix, -float(maxRelativeLen), float(maxRelativeLen));
+    embMatrix = ScaleAndShift(embMatrix, 1.0F, float(maxRelativeLen));
 
     delete[] index;
     return embMatrix;
@@ -341,7 +340,8 @@ XTensor Attention::RPDotProduct(XTensor& x, XTensor& y, XTensor& z, const bool i
     context = MatrixMulBatched(x, X_NOTRANS, y, transposeFlag);
 
     int mergeDims[] = { headNum * batchSize, lenQ, x.dimSize[3] };
-    x.Reshape(3, mergeDims);
+    x = Reshape(x, 3, mergeDims);
+    //x.Reshape(3, mergeDims);
 
     XTensor xTrans;
     xTrans = Transpose(x, 0, 1);
@@ -353,7 +353,9 @@ XTensor Attention::RPDotProduct(XTensor& x, XTensor& y, XTensor& z, const bool i
     relativeTrans = Transpose(relative, 0, 1);
 
     int splitDims[] = { headNum, batchSize, lenQ, lastDim };
-    relativeTrans.Reshape(4, splitDims);
+
+    relativeTrans = Reshape(relativeTrans, 4, splitDims);
+    //relativeTrans.Reshape(4, splitDims);
 
     return Sum(context, relativeTrans);
 }
@@ -362,6 +364,7 @@ XTensor Attention::RPDotProduct(XTensor& x, XTensor& y, XTensor& z, const bool i
 Cache::Cache()
 {
     miss = true;
+    enable = true;
 }
 
 /* update the states cache */

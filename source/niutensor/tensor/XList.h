@@ -123,6 +123,9 @@ public:
     /* shuffle the list */
     void Shuffle(int nround = 10, int beg = -1, int len = 0);
 
+    /* read data from a file */
+    void ReadFromFile(FILE* fp, int num);
+
     /* short */
     T& operator[] (int i) const { return GetItem(i); };
     T& Get(int i) const { return GetItem(i); };
@@ -131,6 +134,7 @@ public:
 
 struct XTensor;
 struct Example;
+struct TrainExample;
 struct Result;
 
 typedef TensorListBase<void*> XList;
@@ -143,6 +147,7 @@ typedef TensorListBase<short> ShortList;
 typedef TensorListBase<uint64_t> UInt64List;
 typedef TensorListBase<XTensor*> TensorList;
 typedef TensorListBase<Example*> InputBufferType;
+typedef TensorListBase<TrainExample*> TrainBufferType;
 typedef TensorListBase<Result*> OutputBufferType;
 
 } /* end of the nts (NiuTrans.Tensor) namespace */

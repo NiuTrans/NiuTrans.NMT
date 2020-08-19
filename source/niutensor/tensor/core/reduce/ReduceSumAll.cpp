@@ -99,7 +99,7 @@ XTensor ReduceSumAll(const XTensor & source)
     _ReduceSumAll(&source, &target);
 
     /* tensor connection */
-    if (source.enableGrad) {
+    if (source.enableGrad && X_ENABLE_GRAD) {
         XLink::MakeLink(&source, NULL, &target, REDUCE_REDUCESUMALL);
     }
 

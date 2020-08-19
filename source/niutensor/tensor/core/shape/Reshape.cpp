@@ -44,7 +44,7 @@ XTensor Reshape(XTensor &s, int order, int * dimSize)
     t.Reshape(order, dimSize);
 
     /* tensor connections */
-    if (s.enableGrad) {
+    if (s.enableGrad && X_ENABLE_GRAD) {
         XLink::MakeLink(&s, NULL, &t, SHAPE_RESHAPE);
     }
 
@@ -60,7 +60,7 @@ void Reshape(XTensor &s, XTensor &t, int order, int * dimSize)
     /* call Reshape function */
     t.Reshape(order, dimSize);
 
-    if (s.enableGrad) {
+    if (s.enableGrad && X_ENABLE_GRAD) {
         /* tensor connections */
         XLink::MakeLink(&s, NULL, &t, SHAPE_RESHAPE);
     }

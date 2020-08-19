@@ -156,7 +156,7 @@ XTensor Mask(const XTensor &a, const XTensor &mask, DTYPE alpha)
     _Mask(&a, &mask, &c, alpha);
 
     /* tensor connections */
-    if (a.enableGrad) {
+    if (a.enableGrad && X_ENABLE_GRAD) {
         XLink::MakeLink(&a, &mask, &c, MATH_MASK);
         XLink::AddParamToHead(&c, alpha);
     }
@@ -179,7 +179,7 @@ void Mask(const XTensor &a, const XTensor &mask, XTensor &c, DTYPE alpha)
     /* call _Mask function */
     _Mask(&a, &mask, &c, alpha);
 
-    if (a.enableGrad) {
+    if (a.enableGrad && X_ENABLE_GRAD) {
         XLink::MakeLink(&a, &mask, &c, MATH_MASK);
         XLink::AddParamToHead(&c, alpha);
     }

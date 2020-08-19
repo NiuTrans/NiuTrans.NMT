@@ -1,9 +1,5 @@
 /* NiuTrans.NMT - an open-source neural machine translation system.
- * Copyright (C) 2020
- * NiuTrans Research
- * and
- * Natural Language Processing Lab, Northeastern University.
- * All rights reserved.
+ * Copyright (C) 2020 NiuTrans Research. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -135,7 +131,7 @@ XTensor Embedder::Make(XTensor& input, bool isDec, bool isTraining, int nstep)
             int startNoPad = 1 + 1;
             int* p = ((int*)inputCPU.data) + i * inputCPU.dimSize[1];
             for (int j = 0; j < inputCPU.dimSize[1]; j++) {
-                if (p[j] == 1) {
+                if (p[j] == padIdx) {
                     posData[i * inputCPU.dimSize[1] + j] = 1;
                 }
                 else {

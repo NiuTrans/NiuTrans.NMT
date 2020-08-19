@@ -89,7 +89,7 @@ XTensor MulAndShift(const XTensor &x, const XTensor &w, const XTensor &b,
             ShowNTErrors("Something is wrong!");
         }
         /* tensor connections */
-        if (w.enableGrad && b.enableGrad) {
+        if (w.enableGrad && b.enableGrad && X_ENABLE_GRAD) {
             XLink::MakeLink(&x, &w, &b, &c, MATH_MULANDSHIFT);
             XLink::AddParamToHeadInt(&c, n);
             XLink::AddParamToHeadTrans(&c, X_NOTRANS);
@@ -165,7 +165,7 @@ XTensor MulAndShift(const XTensor& x, MATRIX_TRANS_TYPE transposedX,
     }
 
     /* tensor connections */
-    if (w.enableGrad && b.enableGrad) {
+    if (w.enableGrad && b.enableGrad && X_ENABLE_GRAD) {
         XLink::MakeLink(&x, &w, &b, &c, MATH_MULANDSHIFT);
         XLink::AddParamToHeadInt(&c, n);
         XLink::AddParamToHeadTrans(&c, transposedX);

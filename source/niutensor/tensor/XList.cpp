@@ -397,6 +397,27 @@ void TensorListBase<T>::Shuffle(int nround, int beg, int len)
     }
 }
 
+/* 
+read data from a file 
+>> fp - pointer to a file
+>> num - number of items to be read
+*/
+template<typename T>
+void TensorListBase<T>::ReadFromFile(FILE* fp, int num)
+{
+    if (maxNum < num) {
+        if(!items)
+            Reserve(num - maxNum);
+        else {
+            free(items);
+            items = (T*)malloc(sizeof(T) * num);
+        }
+    }
+    fread(items, sizeof(T), num, fp);
+    maxNum = num;
+    count += num;
+}
+
 /* specializations and typedef of list */
 template struct TensorListBase<int>;
 template struct TensorListBase<char>;
@@ -408,6 +429,7 @@ template struct TensorListBase<XTensor*>;
 template struct TensorListBase<uint64_t>;
 template struct TensorListBase<void*>;
 template struct TensorListBase<Example*>;
+template struct TensorListBase<TrainExample*>;
 template struct TensorListBase<Result*>;
 
 

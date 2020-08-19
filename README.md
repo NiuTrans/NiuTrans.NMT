@@ -48,28 +48,44 @@ OS: Linux or Windows
 Clone a copy from the web:
 
 ```
-git clone http://47.105.50.196/huchi/nmt.git
+git clone https://github.com/NiuTrans/NiuTrans.NMT.git
 mkdir nmt/build && cd nmt/build
 cmake ..
 ```
 
 NiuTrans.NMT supports acceleration with MKL, OpenBLAS or CUDA.
-Please note that you can only select at most **one** of these libraries.
+Please note that you can only select at most **one** of MKL or OpenBLAS.
 
 *Use MKL (optional):*
 
 Add ``-DUSE_MKL=ON`` and ``-DINTEL_ROOT=$MKL_PATH`` to the CMake command, where ``$MKL_PATH`` is the path of MKL.
 
+Example: 
+```
+cmake -DUSE_MKL=ON -DINTEL_ROOT='/home/nlplab/intelcompilers_and_libraries_2020.2.254/linux' ..
+```
+
 *Use OpenBLAS (optional):*
 
 Add ``-DUSE_OPENBLAS=ON`` and ``-DOPENBLAS_ROOT=$OPENBLAS_PATH`` to the CMake command, where ``$OPENBLAS_PATH`` is the path of OpenBLAS.
 
+Example: 
+```
+cmake -DUSE_OPENBLAS=ON -DOPENBLAS_ROOT='/home/nlplab/openblas/' ..
+```
+
 *Use CUDA (required for training):*
 
 Add ``-DUSE_CUDA=ON`` and ``-DCUDA_TOOLKIT_ROOT_DIR=$CUDA_PATH`` to the CMake command, where ``$CUDA_PATH`` is the path of CUDA toolkit.
+
 You can also add ``-DUSE_FP16=ON`` to the CMake command to get half precision supported.
 
-*Note that half-precision requires Pascal or newer architectures on GPUs.*
+Example: 
+```
+cmake -DUSE_CUDA=ON -DCUDA_TOOLKIT_ROOT_DIR='/home/nlplab/cuda9.2/' -DUSE_FP16=ON ..
+```
+
+*Note that half precision requires Pascal or newer architectures on GPUs.*
 
 #### Compile on Linux
 ```
@@ -90,15 +106,15 @@ Here is some compilation example on Linux with MKL, OpenBLAS, or CUDA supported.
 
 *Compile with MKL supported:*
 ```
-git clone http://47.105.50.196/huchi/nmt.git
+git clone https://github.com/NiuTrans/NiuTrans.NMT.git
 mkdir nmt/build && cd nmt/build
-cmake -DUSE_MKL=ON -DINTEL_ROOT=''/home/huchi/intel/compilers_and_libraries_2020.2.254/linux'' ..
+cmake -DUSE_MKL=ON -DINTEL_ROOT='/home/nlplab/intel/compilers_and_libraries_2020.2.254/linux' ..
 make -j
 ```
 
 *Compile with OpenBLAS supported:*
 ```
-git clone http://47.105.50.196/huchi/nmt.git
+git clone https://github.com/NiuTrans/NiuTrans.NMT.git
 mkdir nmt/build && cd nmt/build
 cmake -DUSE_OPENBLAS=ON -DOPENBLAS_ROOT='/home/nlplab/openblas/' ..
 make -j
@@ -106,7 +122,7 @@ make -j
 
 *Compile with CUDA supported:*
 ```
-git clone http://47.105.50.196/huchi/nmt.git
+git clone https://github.com/NiuTrans/NiuTrans.NMT.git
 mkdir nmt/build && cd nmt/build
 cmake -DUSE_CUDA=ON -DCUDA_TOOLKIT_ROOT_DIR='/home/nlplab/cuda9.2/' ..
 make -j
@@ -114,7 +130,7 @@ make -j
 
 *Compile with CUDA and FP16 supported:*
 ```
-git clone http://47.105.50.196/huchi/nmt.git
+git clone https://github.com/NiuTrans/NiuTrans.NMT.git
 mkdir nmt/build && cd nmt/build
 cmake -DUSE_CUDA=ON -DCUDA_TOOLKIT_ROOT_DIR='/home/nlplab/cuda9.2/' -DUSE_FP16=ON ..
 make -j
@@ -134,8 +150,8 @@ Step 1: Prepare the training data.
 python3 tools/PrepareParallelData.py \ 
 -src $srcFile \
 -tgt $tgtFile \
--sv $srcVocab \
--tv $tgtVocab \
+-src_vocab $srcVocab \
+-tgt_vocab $tgtVocab \
 -output $trainingFile \
 ```
 
@@ -146,14 +162,23 @@ Description:
 * `tv` - Path of the target language vocabulary. The same format as the source language vocabulary.
 * `output` - Path of the training data to be saved. Each line consists of a source sentence and a target sentence, separated by `|||`.
 
+You can load a [BPE](https://github.com/rsennrich/subword-nmt) vocabulary by running:
+```
+python3 tools/GetVocab.py -src $bpeVocab -tgt $niutransVocab
+```
+
+Description:
+* `src` - Path of the BPE vocabulary.
+* `tgt` - Path of the NiuTrans.NMT vocabulary to be saved.
 
 Step 2: Train the model
 
 ```command
 bin/NiuTrans.NMT \
- -dev $devID \
- -model $modelFile \
- -train $trainingFile 
+-dev $deviceID \
+-model $modelPath \
+-train $trainingData \
+-valid $validData \
 ```
 
 Option:
@@ -165,18 +190,18 @@ Option:
 * `wbatch` - Word batch size. Default: 2048.
 * `sbatch` - Sentence batch size. Default: 1.
 * `mt` - Indicates whether the model runs for machine translation. Default: true.
-* `dropout` - Dropout rate for the model. Default: 0.1.
-* `fnndrop` - Dropout rate for fnn layers. Default: 0.0.
-* `attdrop` - Dropout rate for attention layers. Default: 0.0.
+* `dropout` - Dropout rate for the model. Default: 0.3.
+* `fnndrop` - Dropout rate for fnn layers. Default: 0.1.
+* `attdrop` - Dropout rate for attention layers. Default: 0.1.
 * `lrate`- Learning rate. Default: 1.0F.
 * `lrbias` - The parameter that controls the maximum learning rate in training. Default: 0.
-* `nepoch` - Training epoch number. Default: 20.
+* `nepoch` - Training epoch number. Default: 50.
 * `nstep` - Traing step number. Default: 100000.
-* `nwarmup` - Step number of warm-up for training. Default: 3000.
+* `nwarmup` - Step number of warm-up for training. Default: 8000.
 * `adam` - Indicates whether Adam is used. Default: true.
 * `adambeta1` - Hyper parameters of Adam. Default: 0.9F.
 * `adambeta2` - Hyper parameters of Adam. Default: 0.98F.
-* `adambeta` - Hyper parameters of Adam. Default: 1e-9F.
+* `adambeta` - Hyper parameters of Adam. Default: 1e-8F.
 * `shuffled` - Indicates whether the data file is shuffled for training. Default: true.
 * `labelsmoothing` - Label smoothing factor. Default: 0.1.
 * `nstepcheckpoint` - Number of steps after which we make a checkpoint. Default: -1.
@@ -191,30 +216,48 @@ Option:
        length and sc is the sentence number. Default: true.
 * `bigbatch` - Counterpart of "isSmallBatch". Default: false.
 * `randbatch` - Randomize batches. Default: false.
-* `bucketsize` - Bucket size for the batch loader. Default: 0.
+* `bucketsize` - Bucket size for the batch loader. Default: 50000.
 
 #### An Example
 
-Step 1: Extract the pre-processed training data:
+Step 1: Download and extract the IWLST14 De-En data (tokenized, bpe vocabulary shared):
+
+*We provide the bpe code for better reproducibility, the source and target vocabulary are shared and the size is about 10,000.*
+
 ```
-unzip -d sample/train/ sample/train/fbis.zip
+IWSLT_PATH=sample/train/iwslt14.tokenized.de-en
+tar -zxvf $IWSLT_PATH.tar.gz
+python3 tools/PrepareParallelData.py \
+  -src $IWSLT_PATH/train.de \
+  -tgt $IWSLT_PATH/train.en \
+  -src_vocab $IWSLT_PATH/vocab.de \
+  -tgt_vocab $IWSLT_PATH/vocab.en \
+  -output $IWSLT_PATH/train.data
+python3 tools/PrepareParallelData.py \
+  -src $IWSLT_PATH/valid.de \
+  -tgt $IWSLT_PATH/valid.en \
+  -src_vocab $IWSLT_PATH/vocab.de \
+  -tgt_vocab $IWSLT_PATH/vocab.en \
+  -output $IWSLT_PATH/valid.data
 ```
 *You may extract the data manually on Windows.*
 
 
-Step 2: Train the model with default configurations (1 encoder/decoder layer, 256 model size):
+Step 2: Train the model with default configurations 
+(6 encoder/decoder layer, 512 model size, 50 epoches):
 ```
 bin/NiuTrans.NMT \
   -dev 0 \
   -model model.bin \
-  -train sample/train/fbis.train
+  -train $IWSLT_PATH/train.data \
+  -valid $IWSLT_PATH/valid.data
 ```
 
-It costs about 660.7s on a GTX 1080 Ti, and the expected loss is around 4.0.
+It costs about 330s per epoch on a GTX 1080 Ti.
 
 ### Translating
 
-*Make sure compiling the program with CUDA and FP16 if you want to translating with FP16 on GPUs.*
+*Make sure compiling the program with CUDA and FP16 if you want to translate with FP16 on GPUs.*
 
 #### Commands
 
@@ -232,46 +275,43 @@ bin/NiuTrans.NMT \
 Description:
 
 * `model` - Path of the model.
-* `sbatch` - Sentence batch size. Default: 512.
+* `sbatch` - Sentence batch size. Default: 8.
 * `dev` - Device id (-1 for CPUs, and >= 0 for GPUs). Default: 0.
 * `beamsize` - Size of the beam. 1 for the greedy search.
 * `test` - Path of the input file. One sentence per line with tokens separated by spaces.
 * `output` - Path of the output file to be saved. The same format as the input file.
 * `srcvocab` - Path of the source language vocabulary. Its first line is the vocabulary size, followed by a word and its index in each following line.
 * `tgtvocab` - Path of the target language vocabulary. The same format as the source language vocabulary.
-* `fp16 (optional)` - Inference with FP16. This will not work if the model is stored in FP32. Default: disabled.
+* `fp16 (optional)` - Inference with FP16. This will not work if the model is stored in FP32. Default: false.
 * `lenalpha` - The alpha parameter controls the length preference. Default: 0.6.
 * `maxlenalpha` - Scalar of the input sequence (for the max number of search steps). Default: 2.0.
 
 #### An Example
 
-Step 1: Download and extract the [pre-trained model](https://drive.google.com/file/d/1aZbnH-T_II6-ptgz2S7yWJpnCnRky5MD/view) (9 encoder layers, 1 decoder layer, 256 model size with RPR attention and Pre-Norm architecture).
+You can evaluate models trained in the [training example](#an-example) by two steps.
 
-
-Step 2: Translate the WMT 2018 English-German test set (pre-processed) on the GPU:
+Step 1: Translate the IWSLT14 De-En test set (tokenized) on the GPU:
 ```
 bin/NiuTrans.NMT \
 -dev 0 \
- -test 9-1/test2018.en \
- -model 9-1/model.fp32 \
- -sbatch 512 \
- -beamsize 1 \
- -srcvocab 9-1/vocab \
- -tgtvocab 9-1/vocab \
- -output output.atat \
- -rpr -prenorm 
+ -test $IWSLT_PATH/test.de \
+ -model model.bin \
+ -sbatch 64 \
+ -beamsize 1  \
+ -srcvocab $IWSLT_PATH/vocab.de \
+ -tgtvocab $IWSLT_PATH/vocab.en \
+ -output output.atat
 sed -r 's/(@@ )|(@@ ?$)//g' < output.atat > output
 ```
 
 You can also remove the `-dev 0` to use the CPU.
 
-Step 3: Check the translation with [SacreBLEU](https://github.com/mjpost/sacrebleu):
+Step 2: Check the translation with [SacreBLEU](https://github.com/mjpost/sacrebleu):
 ```
-pip3 install sacrebleu
-cat output | sacrebleu -t wmt18 -l en-de -ol en
+cat output | sacrebleu $IWSLT_PATH/test.en
 ```
 
-It takes about 7s for translating test2018.en (2,998 sentences) on a GTX 1080 Ti. The expected sacreBLEU score is 41.2 (without detokenizing).
+It takes about 15s for translating test.de (6,750 sentences) on a GTX 1080 Ti. The expected sacreBLEU score is about 31.4 (without detokenizing).
 
 
 ## Converting Models from Fairseq
@@ -281,10 +321,10 @@ The core implementation is framework agnostic, so we can easily convert models t
 The following frameworks and models are currently supported:
 
 |     | [fairseq (0.6.2)](https://github.com/pytorch/fairseq/tree/v0.6.2) |
-| --- | :---: | :---: |
-| Transformer ([Vaswani et al. 2017](https://arxiv.org/abs/1706.03762)) | ✓ | ✓ |
-| RPR attention ([Shaw et al. 2018](https://arxiv.org/abs/1803.02155)) | ✓ | ✓ |
-| Deep Transformer ([Wang et al. 2019](https://www.aclweb.org/anthology/P19-1176/)) | ✓ | ✓ |
+| --- | :---: |
+| Transformer ([Vaswani et al. 2017](https://arxiv.org/abs/1706.03762)) | ✓ |
+| RPR attention ([Shaw et al. 2018](https://arxiv.org/abs/1803.02155)) | ✓ |
+| Deep Transformer ([Wang et al. 2019](https://www.aclweb.org/anthology/P19-1176/)) | ✓ |
 
 *Refer to [this page](https://fairseq.readthedocs.io/en/latest/getting_started.html#training-a-new-model) for the details about training models with fairseq.*
 

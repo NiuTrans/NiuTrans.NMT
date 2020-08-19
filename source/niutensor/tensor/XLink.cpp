@@ -300,7 +300,7 @@ void XLink::MakeLink(const XTensor * t1, const XTensor * t2, XTensor * h, int id
     if(h == NULL)
         return;
     
-    if (!t1->enableGrad)
+    if (!t1->enableGrad || !X_ENABLE_GRAD)
         return;
 
     TensorList list(2);
@@ -323,7 +323,7 @@ void XLink::MakeLink(const XTensor * t1, const XTensor * t2, const XTensor * t3,
     if (h == NULL)
         return;
 
-    if (!t1->enableGrad || !t2->enableGrad)
+    if (!t1->enableGrad || !t2->enableGrad || !X_ENABLE_GRAD)
         return;
     
     TensorList list(3);
@@ -376,7 +376,7 @@ create a hyper edge with a input tensors and a list of output tensors
 */
 void XLink::MakeLink(XTensor * t, TensorList * list, int id)
 {
-    if (!t->enableGrad)
+    if (!t->enableGrad || !X_ENABLE_GRAD)
         return;
 
     /* forward */

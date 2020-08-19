@@ -1,7 +1,8 @@
 '''
-Convert a fairseq checkpoint to a niutensor model.
-Usage: python3 ModelConverter.py -src <fairseq_model> -tgt <niutensor_model>
+Convert a fairseq checkpoint to a NiuTrans.NMT model.
+Usage: python3 ModelConverter.py -src <fairseq_model> -tgt <niutrans_nmt_model>
 Help: python3 ModelConverter.py -h
+Requirements: fairseq >= 0.6.2
 '''
 
 import torch
@@ -11,7 +12,7 @@ from struct import pack
 
 parser = argparse.ArgumentParser(description='The model converter for niutensor')
 parser.add_argument('-src', help='fairseq checkpoint', type=str, default='model.pt')
-parser.add_argument('-tgt', help='niutensor model', type=str, default='model.bin')
+parser.add_argument('-tgt', help='niutrans.nmt model', type=str, default='model.bin')
 parser.add_argument('-mode', help='storage mode', type=str, default='fp32')
 args = parser.parse_args()
 args.mode = args.mode.lower()
@@ -27,11 +28,11 @@ def get_model_parameters(m):
     decoder_emb = None
     decoder_output_w = None
     for k in m['model']:
-        if 'embed_tokens.weight' in k:
+        if 'encoder.embed_tokens.weight' in k:
             encoder_emb = m['model'][k]
-        elif 'embed_tokens.weight' in k:
+        elif 'decoder.embed_tokens.weight' in k:
             decoder_emb = m['model'][k]
-        elif 'embed_tokens.weight' in k:
+        elif 'decoder.embed_out' in k:
             decoder_output_w = m['model'][k]
         elif m['model'][k].numel() != 1:
             # ignore fairseq version descriptions
@@ -62,7 +63,7 @@ def get_model_parameters(m):
 
     if m['args'].share_decoder_input_output_embed == False:    
         # output weight
-        p.append(decoder_output_w)
+        p.append(decoder_output_w.t())
 
     return p
 
@@ -86,6 +87,7 @@ with torch.no_grad():
         'max_relative_length' : model['args'].max_relative_length,
         'share_all_embeddings' : model['args'].share_all_embeddings,
         'share_decoder_input_output_embed' : model['args'].share_decoder_input_output_embed,
+        'max_source_positions' : model['args'].max_source_positions,
     }
     model = model['model']
     with open(args.tgt+".name.txt", "w") as name_list:
@@ -108,7 +110,8 @@ with torch.no_grad():
         meta_info['head_num'],
         meta_info['max_relative_length'],
         meta_info['share_all_embeddings'],
-        meta_info['share_decoder_input_output_embed']
+        meta_info['share_decoder_input_output_embed'],
+        meta_info['max_source_positions'],
     ]
     print(meta_info)
     meta_info_list = [int(p) for p in meta_info_list]

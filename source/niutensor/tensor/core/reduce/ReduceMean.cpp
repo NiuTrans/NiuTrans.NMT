@@ -76,7 +76,7 @@ XTensor ReduceMean(const XTensor &input, int dim)
     _ReduceMean(&input, &output, dim);
         
     /* tensor connection */
-    if (input.enableGrad) {
+    if (input.enableGrad && X_ENABLE_GRAD) {
         XLink::MakeLink(&input, NULL, &output, REDUCE_REDUCEMEAN);
         XLink::AddParamToHeadInt(&output, dim);
     }
@@ -120,7 +120,7 @@ void ReduceMean(const XTensor &input, XTensor &output, int dim)
     /* call _ReduceMean function */
     _ReduceMean(&input, &output, dim);
 
-    if (input.enableGrad) {
+    if (input.enableGrad && X_ENABLE_GRAD) {
         /* tensor connections */
         XLink::MakeLink(&input, NULL, &output, REDUCE_REDUCEMEAN);
         XLink::AddParamToHeadInt(&output, dim);

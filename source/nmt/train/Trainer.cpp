@@ -1,9 +1,5 @@
 /* NiuTrans.NMT - an open-source neural machine translation system.
- * Copyright (C) 2020
- * NiuTrans Research
- * and
- * Natural Language Processing Lab, Northeastern University.
- * All rights reserved.
+ * Copyright (C) 2020 NiuTrans Research. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -69,8 +65,10 @@ void Trainer::Init(Config& config)
     lrbias = config.lrbias;
     sBatchSize = config.sBatchSize;
     wBatchSize = config.wBatchSize;
+    bucketSize = config.bucketSize;
     nepoch = config.nepoch;
     nstep = config.nstep;
+    maxCheckpoint = config.maxCheckpoint;
     d = config.modelSize;
     nwarmup = config.nwarmup;
     vSize = config.srcVocabSize;
@@ -89,8 +87,6 @@ void Trainer::Init(Config& config)
 
     adamBeta1T = 1.0F;
     adamBeta2T = 1.0F;
-
-    batchLoader.Init(config);
 }
 
 int tc = 0;
@@ -105,6 +101,11 @@ train the model
 void Trainer::Train(const char* fn, const char* validFN, 
                     const char* modelFN, Model* model)
 {
+    /* disable cache during training */
+    for (int i = 0; i < model->decoder->nlayer; i++) {
+        model->decoder->selfAttCache[i].enable = false;
+        model->decoder->enDeAttCache[i].enable = false;
+    }
     int step = 0;
     int wc = 0;
     int ws = 0;
@@ -130,22 +131,16 @@ void Trainer::Train(const char* fn, const char* validFN,
 #endif
 
     int devID = model->devID;
+
     XNet net;
 
     PrepareModel(model);
 
     double startT = GetClockSec();
 
-    for (epoch = 1; epoch <= nepoch; epoch++) {
-#ifndef WIN32
-        if (isShuffled) {
-            fprintf(stderr, "shuffle the file\n");
-            batchLoader.Shuffle(fn, trainFN);
-        }
-#endif
+    batchLoader.Init(fn, bucketSize, true);
 
-        FILE* file = fopen(trainFN, "r");
-        CheckNTErrors(file, "cannot open training file!");
+    for (epoch = 1; epoch <= nepoch; epoch++) {
 
         wordCount = 0;
         loss = 0;
@@ -161,14 +156,15 @@ void Trainer::Train(const char* fn, const char* validFN,
         XTensor paddingEnc;
         XTensor paddingDec;
 
-        /* gold standard */
-        XTensor gold;
+        /* reset the batch loader */
+        batchLoader.ClearBuf();
 
-        while (batchLoader.LoadBatch(file, model->isLM,
-            &batchEnc, &paddingEnc, &batchDec, &paddingDec, &gold, &label,
-            NULL, vSize, vSizeTgt,
-            sBatchSize, wBatchSize, isLenSorted, ws, wc, devID, true))
+        while (!batchLoader.IsEmpty())
         {
+            UInt64List info = batchLoader.LoadBatch(&batchEnc, &paddingEnc, &batchDec, &paddingDec, &label, 
+                                                    sBatchSize, wBatchSize, devID);
+            wc = info[0];
+            ws = info[1];
             CheckNTErrors(batchEnc.order == 2, "wrong tensor order of the sequence batch");
 
             /* output probabilities */
@@ -208,10 +204,18 @@ void Trainer::Train(const char* fn, const char* validFN,
 
                 /* update the parameters */
                 if (gradStep == updateStep) {
-                    /* learning rate */
-                    lr = lrate * (1.0F / (float)sqrt((float)d)) *
-                        (float)MIN(pow((float)validStep + 1, -0.5F - lrbias),
-                        ((float)validStep + 1) * pow((float)nwarmup, -1.5F - lrbias));
+
+                    float warmupEndLR = lrate;
+                    float warmupInitLR = 1e-7;
+                    float lrStep = (warmupEndLR - warmupInitLR) / nwarmup;
+                    float decayFactor = warmupEndLR * pow(float(nwarmup), 0.5F);
+
+                    /* learning rate, scheduled by inverse square root */
+                    if (step < nwarmup)
+                        lr = warmupInitLR + step * lrStep;
+                    else
+                        lr = decayFactor * pow((float)step, -0.5F);
+
 
                     /* model update */
                     Update(model, lr);
@@ -243,9 +247,8 @@ void Trainer::Train(const char* fn, const char* validFN,
                 nStepCheck = 0;
                 nCheckpoint++;
             }
+            break;
         }
-
-        fclose(file);
 
         if (isEnd)
             break;
@@ -263,6 +266,9 @@ void Trainer::Train(const char* fn, const char* validFN,
         lr, elapsed, step, epoch, wordCountTotal, loss / wordCount, exp(loss / wordCount));
     XPRINT4(0, stderr, "[INFO] training finished (took %.1fs, step=%d, \
         skipped=%d and epoch=%d)\n", elapsed, step, nSkipped, epoch);
+
+    fprintf(stderr, "[INFO] saving the final model\n");
+    model->Dump(modelFN);
 
     delete[] trainFN;
 }
@@ -282,10 +288,7 @@ void Trainer::Validate(const char* fn, const char* ofn, Model* model)
     float loss = 0;
 
     /* data files */
-    FILE* file = fopen(fn, "rb");
-    CheckNTErrors(file, "Cannot read the test file");
-    FILE* ofile = fopen(ofn, "wb");
-    CheckNTErrors(ofile, "Cannot open the output file");
+    batchLoader.Init(fn, 0, false);
 
     double startT = GetClockSec();
 
@@ -300,19 +303,12 @@ void Trainer::Validate(const char* fn, const char* ofn, Model* model)
     XTensor paddingEnc;
     XTensor paddingDec;
 
-    /* gold standard */
-    XTensor gold;
-
-    /* an array that keeps the sequences */
-    int* seqs = new int[MILLION];
-
-    batchLoader.ClearBuf();
-
-    while (batchLoader.LoadBatch(file, model->isLM,
-        &batchEnc, &paddingEnc, &batchDec, &paddingDec, &gold, &label,
-        seqs, vSize, vSizeTgt,
-        1, 1, false, ws, wc, model->devID, false))
+    while (!batchLoader.IsEmpty())
     {
+        UInt64List info = batchLoader.LoadBatch(&batchEnc, &paddingEnc, &batchDec, &paddingDec, &label, 
+                                                sBatchSize, 0, model->devID);
+        wc = info[0];
+        ws = info[1];
         CheckNTErrors(batchEnc.order == 2, "wrong tensor order of the sequence batch");
 
         /* output probabilities */
@@ -337,45 +333,15 @@ void Trainer::Validate(const char* fn, const char* ofn, Model* model)
         lossTensor = CrossEntropy(output, labelOnehot, paddingDec);
         float lossBatch = ReduceSumAllValue(lossTensor);
 
-        /* dump the test result */
-        for (int s = 0; s < bSize; s++) {
-            DTYPE sum = 0;
-            int* seq = seqs + s * length;
-            for (int i = 0; i < length; i++) {
-                if (seq[i] >= 0) {
-                    fprintf(ofile, "%d ", seq[i]);
-                }
-                else
-                    break;
-            }
-            fprintf(ofile, "||| ");
-            for (int i = 0; i < length; i++) {
-                if (seq[i] >= 0) {
-                    DTYPE p = lossTensor.Get2D(s, i);
-                    fprintf(ofile, "%.3e ", p);
-                    sum += p;
-                }
-                else
-                    break;
-            }
-            fprintf(ofile, "||| %e\n", sum);
-        }
-
         loss += lossBatch;
 
         wordCount += wc;
         sentCount += bSize;
     }
 
-    fclose(file);
-    fclose(ofile);
-
-    delete[] seqs;
-
     double elapsed = GetClockSec() - startT;
 
-    XPRINT5(0, stderr, "[INFO] test finished (took %.1fs, \
-            sentence=%d, word=%d, loss=%.3f and ppl=%.3f)\n",
+    XPRINT5(0, stderr, "[INFO] test finished (took %.1fs, sentence=%d, word=%d, loss=%.3f and ppl=%.3f)\n",
             elapsed, sentCount, wordCount, loss / wordCount, exp(loss / wordCount));
 }
 
@@ -390,18 +356,26 @@ make a checkpoint
 void Trainer::MakeCheckpoint(Model* model, const char* validFN, 
                              const char* modelFN, const char* label, int id)
 {
-    fprintf(stderr, "make a checkpoint\n");
+    fprintf(stderr, "[INFO] make a checkpoint\n");
     char* fn = new char[MAX_LINE_LENGTH];
+
+    Trainer validator;
+    validator.Init(*cfg);
+    
+    /* save last checkpoints */
+    id = validator.maxCheckpoint - (maxCheckpoint--);
+    if (maxCheckpoint == 0)
+        maxCheckpoint = validator.maxCheckpoint;
     sprintf(fn, "%s.%s.%03d", modelFN, label, id);
+
     model->Dump(fn);
     delete[] fn;
 
     char* fn2 = new char[MAX_LINE_LENGTH];
     sprintf(fn2, "%s.%s.%03d.output", modelFN, label, id);
     if (validFN != NULL) {
-        Trainer trainer;
-        trainer.Init(*cfg);
-        trainer.Validate(validFN, fn2, model);
+        
+        validator.Validate(validFN, fn2, model);
     }
     delete[] fn2;
 }

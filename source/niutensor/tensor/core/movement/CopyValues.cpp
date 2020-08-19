@@ -134,7 +134,7 @@ XTensor CopyValues(const XTensor &s, XStream * stream)
     _CopyValues(&s, &t, stream);
         
     /* tensor connection */
-    if (s.enableGrad) {
+    if (s.enableGrad && X_ENABLE_GRAD) {
         XLink::MakeLink(&s, NULL, &t, MOVEMENT_COPYVALUES);
     }
 

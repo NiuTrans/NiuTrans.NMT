@@ -305,7 +305,7 @@ XTensor ReduceSum(const XTensor &input, int dim, const XTensor &shift, DTYPE pow
     _ReduceSum(&input, &output, dim, &shift, power, isExp);
             
     /* tensor connection */
-    if (input.enableGrad) {
+    if (input.enableGrad && X_ENABLE_GRAD) {
         XLink::MakeLink(&input, &shift, &output, REDUCE_REDUCESUM);
         XLink::AddParamToHeadInt(&output, dim);
         XLink::AddParamToHead(&output, power);
@@ -342,7 +342,7 @@ void ReduceSum(const XTensor &input, XTensor &output, int dim, const XTensor &sh
     /* call _ReduceSum function */
     _ReduceSum(&input, &output, dim, &shift, power, isExp);
 
-    if (input.enableGrad) {
+    if (input.enableGrad && X_ENABLE_GRAD) {
         /* tensor connections */
         XLink::MakeLink(&input, &shift, &output, REDUCE_REDUCESUM);
         XLink::AddParamToHeadInt(&output, dim);
@@ -386,7 +386,7 @@ XTensor ReduceSum(const XTensor &input, int dim, DTYPE power, bool isExp)
     _ReduceSum(&input, &output, dim, NULL, power, isExp);
             
     /* tensor connection */
-    if (input.enableGrad) {
+    if (input.enableGrad && X_ENABLE_GRAD) {
         XLink::MakeLink(&input, NULL, &output, REDUCE_REDUCESUM);
         XLink::AddParamToHeadInt(&output, dim);
         XLink::AddParamToHead(&output, power);
@@ -437,7 +437,7 @@ void ReduceSum(const XTensor &input, XTensor &output, int dim, DTYPE power, bool
     /* call _ReduceSum function */
     _ReduceSum(&input, &output, dim, NULL, power, isExp);
 
-    if (input.enableGrad) {
+    if (input.enableGrad && X_ENABLE_GRAD) {
         /* tensor connections */
         XLink::MakeLink(&input, NULL, &output, REDUCE_REDUCESUM);
         XLink::AddParamToHeadInt(&output, dim);

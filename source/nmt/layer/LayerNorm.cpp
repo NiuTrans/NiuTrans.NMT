@@ -1,9 +1,5 @@
 /* NiuTrans.NMT - an open-source neural machine translation system.
- * Copyright (C) 2020
- * NiuTrans Research
- * and
- * Natural Language Processing Lab, Northeastern University.
- * All rights reserved.
+ * Copyright (C) 2020 NiuTrans Research. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,6 +55,8 @@ void LN::InitModel(Config& config)
     InitTensor1D(&b, d, X_FLOAT, devID);
     w.SetDataRand(1.0F, 1.0F);
     b.SetZeroAll();
+
+    w.SetDataFixed(1);
 }
 
 /*

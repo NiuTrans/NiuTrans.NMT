@@ -1,9 +1,5 @@
 /* NiuTrans.NMT - an open-source neural machine translation system.
- * Copyright (C) 2020
- * NiuTrans Research
- * and
- * Natural Language Processing Lab, Northeastern University.
- * All rights reserved.
+ * Copyright (C) 2020 NiuTrans Research. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -85,11 +81,26 @@ void Model::InitModel(Config& config)
     if (!config.isTraining) {
         modelFile = fopen(config.modelFN, "rb");
         CheckNTErrors(modelFile, "failed to open the model file");
-        for (auto& meta : metaInfo)
+        for (auto& meta : metaInfo) {
             fread(meta, sizeof(int), 1, modelFile);
+        }
+    }
+    else {
+        shareAllEmbeddings = config.shareAllEmbeddings;
+        shareDecInputOutputWeight = config.shareDecInputOutputWeight;
+
+        /* read the source and target vocab size */
+        FILE* trainF = fopen(config.trainFN, "rb");
+        fread(&config.srcVocabSize, sizeof(config.srcVocabSize), 1, trainF);
+        fread(&config.tgtVocabSize, sizeof(config.tgtVocabSize), 1, trainF);
+        CheckNTErrors(config.srcVocabSize > 0, "Invalid source vocabulary size");
+        CheckNTErrors(config.tgtVocabSize > 0, "Invalid target vocabulary size");
+        fclose(trainF);
     }
 
     nhead = config.nhead;
+
+    ShowModelConfig(config);
 
     encoder->InitModel(config);
     outputLayer->InitModel(config);
@@ -110,6 +121,21 @@ void Model::InitModel(Config& config)
 
     if (modelFile != NULL)
         fclose(modelFile);
+}
+
+/* 
+print model configurations 
+>> config - model configurations 
+*/
+void Model::ShowModelConfig(Config& config)
+{
+    /* TODO: output more info */
+    XPRINT1(0, stderr, "encoder layer: %d\n", config.nEncLayer);
+    XPRINT1(0, stderr, "decoder layer: %d\n", config.nDecLayer);
+    XPRINT1(0, stderr, "attention heads: %d\n", config.nhead);
+    XPRINT1(0, stderr, "model size: %d\n", config.modelSize);
+    XPRINT1(0, stderr, "source vocab size: %d\n", config.srcVocabSize);
+    XPRINT1(0, stderr, "target vocab size: %d\n", config.tgtVocabSize);
 }
 
 /*
@@ -478,7 +504,7 @@ void Model::Read(FILE* file)
     if (useFP16) {
         for (int i = 0; i < params.Size(); i++) {
             XTensor* p = params[i];
-            InitTensor(p, p->order, p->dimSize, X_FLOAT16, p->devID, p->enableGrad);
+            InitTensor(p, p->order, p->dimSize, X_FLOAT16, p->devID, p->enableGrad && X_ENABLE_GRAD);
         }
 
         auto& encEmb = encoder->embedder.posEmbeddingBase;
@@ -492,13 +518,13 @@ void Model::Read(FILE* file)
 
     /* share all embeddings */
     if (shareAllEmbeddings == 1) {
-        decoder->embedder.w = CopyValues(encoder->embedder.w);
+        _CopyValues(&encoder->embedder.w, &decoder->embedder.w);
         XPRINT(0, stderr, "[INFO] sharing encoder decoder embeddings\n");
     }
 
     /* share embeddings with output weights */
     if (shareDecInputOutputWeight == 1) {
-        outputLayer->w = CopyValues(decoder->embedder.w);
+        _CopyValues(&decoder->embedder.w, &outputLayer->w);
         XPRINT(0, stderr, "[INFO] sharing decoder embeddings with output weights\n");
     }
 

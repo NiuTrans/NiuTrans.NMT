@@ -1,9 +1,5 @@
 /* NiuTrans.NMT - an open-source neural machine translation system.
- * Copyright (C) 2020
- * NiuTrans Research
- * and
- * Natural Language Processing Lab, Northeastern University.
- * All rights reserved.
+ * Copyright (C) 2020 NiuTrans Research. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +24,7 @@
 #include "../Model.h"
 #include "BatchLoader.h"
 #include "../../niutensor/tensor/function/FHeader.h"
+#include "TrainDataSet.h"
 
 using namespace nts;
 
@@ -66,11 +63,17 @@ public:
     /* word batch size */
     int wBatchSize;
 
+    /* size of bucket for grouping data by length */
+    int bucketSize;
+
     /* training epoch number */
     int nepoch;
 
     /* traing step number */
     int nstep;
+
+    /* the maximum number of saved checkpoints */
+    int maxCheckpoint;
 
     /* indicates whether we use adam */
     bool useAdam;
@@ -109,8 +112,8 @@ public:
     /* indicates whether the sequence is sorted by length */
     bool isLenSorted;
 
-    /* for batching */
-    BatchLoader batchLoader;
+    /* used for loading batches */
+    TrainDataSet batchLoader;
 
 public:
     /* constructor */

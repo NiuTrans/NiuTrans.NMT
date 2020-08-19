@@ -1,9 +1,5 @@
 /* NiuTrans.NMT - an open-source neural machine translation system.
- * Copyright (C) 2020
- * NiuTrans Research
- * and
- * Natural Language Processing Lab, Northeastern University.
- * All rights reserved.
+ * Copyright (C) 2020 NiuTrans Research. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,21 +60,25 @@ Config::Config(int argc, const char** argv)
     ShowParams(argsNum, args);
 
     /* options for the model */
-    LoadParamInt(argsNum, args, "nhead", &nhead, 8);
-    LoadParamInt(argsNum, args, "enclayer", &nEncLayer, 1);
-    LoadParamInt(argsNum, args, "declayer", &nDecLayer, 1);
+    LoadParamInt(argsNum, args, "nhead", &nhead, 4);
+    LoadParamInt(argsNum, args, "enclayer", &nEncLayer, 6);
+    LoadParamInt(argsNum, args, "declayer", &nDecLayer, 6);
     LoadParamInt(argsNum, args, "maxrp", &maxRP, 8);
-    LoadParamInt(argsNum, args, "embsize", &embSize, 256);
-    LoadParamInt(argsNum, args, "modelsize", &modelSize, 256);
+    LoadParamInt(argsNum, args, "embsize", &embSize, 512);
+    LoadParamInt(argsNum, args, "modelsize", &modelSize, 512);
     LoadParamInt(argsNum, args, "maxpos", &maxPosLen, 1024);
-    LoadParamInt(argsNum, args, "fnnhidden", &fnnHiddenSize, modelSize * 4);
-    LoadParamInt(argsNum, args, "vsize", &srcVocabSize, 10000);
-    LoadParamInt(argsNum, args, "vsizetgt", &tgtVocabSize, 10000);
+    LoadParamInt(argsNum, args, "fnnhidden", &fnnHiddenSize, modelSize * 2);
+    LoadParamInt(argsNum, args, "vsize", &srcVocabSize, 10152);
+    LoadParamInt(argsNum, args, "vsizetgt", &tgtVocabSize, 10152);
     LoadParamInt(argsNum, args, "padid", &padID, 1);
     LoadParamInt(argsNum, args, "startid", &startID, 2);
     LoadParamInt(argsNum, args, "endid", &endID, 2);
     LoadParamBool(argsNum, args, "rpr", &useRPR, false);
-    LoadParamBool(argsNum, args, "prenorm", &preNorm, false);
+    LoadParamBool(argsNum, args, "prenorm", &preNorm, true);
+
+    // TODO: refactor the parameters type to support weight sharing during training
+    LoadParamBool(argsNum, args, "shareemb", &shareAllEmbeddings, false);
+    LoadParamBool(argsNum, args, "sharedec", &shareDecInputOutputWeight, false);
     LoadParamString(argsNum, args, "model", modelFN, "model.bin");
     LoadParamString(argsNum, args, "srcvocab", srcVocabFN, "vocab.src");
     LoadParamString(argsNum, args, "tgtvocab", tgtVocabFN, "vocab.tgt");
@@ -87,26 +87,27 @@ Config::Config(int argc, const char** argv)
     LoadParamString(argsNum, args, "train", trainFN, "");
     LoadParamString(argsNum, args, "valid", validFN, "");
     LoadParamInt(argsNum, args, "dev", &devID, -1);
-    LoadParamInt(argsNum, args, "wbatch", &wBatchSize, 2048);
-    LoadParamInt(argsNum, args, "sbatch", &sBatchSize, 1);
+    LoadParamInt(argsNum, args, "wbatch", &wBatchSize, 4096);
+    LoadParamInt(argsNum, args, "sbatch", &sBatchSize, 8);
     isTraining = (strcmp(trainFN, "") == 0) ? false : true;
     LoadParamBool(argsNum, args, "mt", &isMT, true);
-    LoadParamFloat(argsNum, args, "dropout", &dropout, 0.1);
-    LoadParamFloat(argsNum, args, "fnndrop", &fnnDropout, 0.0);
-    LoadParamFloat(argsNum, args, "attdrop", &attDropout, 0.0);
+    LoadParamFloat(argsNum, args, "dropout", &dropout, 0.3);
+    LoadParamFloat(argsNum, args, "fnndrop", &fnnDropout, 0.1);
+    LoadParamFloat(argsNum, args, "attdrop", &attDropout, 0.1);
 
-    LoadParamFloat(argc, args, "lrate", &lrate, 1.0F);
+    LoadParamFloat(argc, args, "lrate", &lrate, 0.0015F);
     LoadParamFloat(argc, args, "lrbias", &lrbias, 0);
-    LoadParamInt(argc, args, "nepoch", &nepoch, 20);
+    LoadParamInt(argc, args, "nepoch", &nepoch, 50);
+    LoadParamInt(argc, args, "maxcheckpoint", &maxCheckpoint, 10);
     LoadParamInt(argc, args, "nstep", &nstep, 100000);
-    LoadParamInt(argc, args, "nwarmup", &nwarmup, 3000);
+    LoadParamInt(argc, args, "nwarmup", &nwarmup, 8000);
     LoadParamBool(argc, args, "adam", &useAdam, true);
     LoadParamFloat(argc, args, "adambeta1", &adamBeta1, 0.9F);
     LoadParamFloat(argc, args, "adambeta2", &adamBeta2, 0.98F);
-    LoadParamFloat(argc, args, "adamdelta", &adamDelta, 1e-9F);
+    LoadParamFloat(argc, args, "adamdelta", &adamDelta, 1e-8F);
     LoadParamBool(argc, args, "shuffled", &isShuffled, true);
     LoadParamFloat(argc, args, "labelsmoothing", &labelSmoothingP, 0.1);
-    LoadParamInt(argc, args, "nstepcheckpoint", &nStepCheckpoint, -1);
+    LoadParamInt(argc, args, "nstepcheckpoint", &nStepCheckpoint, 1);
     LoadParamBool(argc, args, "epochcheckpoint", &useEpochCheckpoint, false);
     LoadParamInt(argc, args, "updatestep", &updateStep, 1);
     LoadParamBool(argc, args, "debug", &isDebugged, false);
@@ -117,7 +118,7 @@ Config::Config(int argc, const char** argv)
     LoadParamBool(argc, args, "smallbatch", &isSmallBatch, true);
     LoadParamBool(argc, args, "bigbatch", &isBigBatch, false);
     LoadParamBool(argc, args, "randbatch", &isRandomBatch, false);
-    LoadParamInt(argc, args, "bucketsize", &bucketSize, 0);
+    LoadParamInt(argc, args, "bucketsize", &bucketSize, 50000);
 
     /* options for translating */
     LoadParamString(argsNum, args, "test", testFN, "");
@@ -125,7 +126,7 @@ Config::Config(int argc, const char** argv)
     LoadParamInt(argsNum, args, "beamsize", &beamSize, 1);
     LoadParamBool(argsNum, args, "fp16", &useFP16, false);
     LoadParamFloat(argsNum, args, "lenalpha", &lenAlpha, 0.6);
-    LoadParamFloat(argsNum, args, "maxlenalpha", &maxLenAlpha, 1.15);
+    LoadParamFloat(argsNum, args, "maxlenalpha", &maxLenAlpha, 1.2);
 
     for (int i = 0; i < argc; i++)
         delete[] args[i];

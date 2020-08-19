@@ -301,7 +301,7 @@ XTensor MatrixMul(const XTensor &a, MATRIX_TRANS_TYPE transposedA,
     _MatrixMul(&a, transposedA, &b, transposedB, &c, alpha, 0, parallelRunner);
 
     /* tensor connections */
-    if (a.enableGrad && b.enableGrad) {
+    if (a.enableGrad && b.enableGrad && X_ENABLE_GRAD) {
         XLink::MakeLink(&a, &b, &c, MATH_MATRIXMUL);
         XLink::AddParamToHeadTrans(&c, transposedA);
         XLink::AddParamToHeadTrans(&c, transposedB);
@@ -350,7 +350,7 @@ void MatrixMul(const XTensor &a, MATRIX_TRANS_TYPE transposedA,
     /* call _MatrixMul function */
     _MatrixMul(&a, transposedA, &b, transposedB, &c, alpha, beta, parallelRunner);
 
-    if (a.enableGrad && b.enableGrad) {
+    if (a.enableGrad && b.enableGrad && X_ENABLE_GRAD) {
         /* tensor connections */
         XLink::MakeLink(&a, &b, &c, MATH_MATRIXMUL);
         XLink::AddParamToHeadTrans(&c, transposedA);
@@ -399,7 +399,7 @@ XTensor MatrixMul(const XTensor &a, const XTensor &b,
     _MatrixMul(&a, X_NOTRANS, &b, X_NOTRANS, &c, alpha, 0, parallelRunner);
 
     /* tensor connections */
-    if (a.enableGrad && b.enableGrad) {
+    if (a.enableGrad && b.enableGrad && X_ENABLE_GRAD) {
         XLink::MakeLink(&a, &b, &c, MATH_MATRIXMUL);
         XLink::AddParamToHeadTrans(&c, X_NOTRANS);
         XLink::AddParamToHeadTrans(&c, X_NOTRANS);
@@ -448,7 +448,7 @@ void MatrixMul(const XTensor &a, const XTensor &b, XTensor &c,
     /* call _MatrixMul function */
     _MatrixMul(&a, X_NOTRANS, &b, X_NOTRANS, &c, alpha, 0, parallelRunner);
 
-    if (a.enableGrad && b.enableGrad) {
+    if (a.enableGrad && b.enableGrad && X_ENABLE_GRAD) {
         /* tensor connections */
         XLink::MakeLink(&a, &b, &c, MATH_MATRIXMUL);
         XLink::AddParamToHeadTrans(&c, X_NOTRANS);
