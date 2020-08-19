@@ -108,13 +108,12 @@ void Model::InitModel(Config& config)
     if (isMT)
         decoder->InitModel(config);
 
-    TensorList params(10);
-    GetParams(params);
-
     /* load parameters */
     if (!config.isTraining)
         Read(modelFile);
     else {
+        TensorList params(10);
+        GetParams(params);
         for (int i = 0; i < params.Size(); i++)
             params[i]->SetVarFlag();
     }
@@ -448,8 +447,9 @@ void Model::GetParams(TensorList& list)
         list.Add(&decoder->embedder.w);
     }
 
-    if (shareDecInputOutputWeight == 0)
+    if (shareDecInputOutputWeight == 0) {
         list.Add(&outputLayer->w);
+    }
 }
 
 /*
@@ -499,6 +499,7 @@ void Model::Read(FILE* file)
 
     TensorList params(100);
     GetParams(params);
+    fprintf(stderr, "params count: %d\n", params.count);
 
     /* convert parameters to FP16 */
     if (useFP16) {

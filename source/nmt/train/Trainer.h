@@ -22,8 +22,6 @@
 #define __TRAINER_H__
 
 #include "../Model.h"
-#include "BatchLoader.h"
-#include "../../niutensor/tensor/function/FHeader.h"
 #include "TrainDataSet.h"
 
 using namespace nts;

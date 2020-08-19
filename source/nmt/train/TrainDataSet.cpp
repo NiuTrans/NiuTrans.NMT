@@ -150,13 +150,15 @@ UInt64List TrainDataSet::LoadBatch(XTensor* batchEnc, XTensor* paddingEnc,
     /* get the maximum source sentence length in a mini-batch */
     size_t maxSrcLen = buffer[curIdx]->srcSent.Size();
 
-    /* dynamic batching for sentences */
-    while ((realBatchSize < (buffer.Size() - curIdx))
-        && (realBatchSize * maxSrcLen < batchSize)
-        && (realBatchSize * buffer[curIdx + realBatchSize]->srcSent.Size() < batchSize)) {
-        if (maxSrcLen < buffer[curIdx + realBatchSize]->srcSent.Size())
-            maxSrcLen = buffer[curIdx + realBatchSize]->srcSent.Size();
-        realBatchSize++;
+    /* dynamic batching for sentences, enabled when the dataset is used for training */
+    if (isTraining) {
+        while ((realBatchSize < (buffer.Size() - curIdx))
+            && (realBatchSize * maxSrcLen < batchSize)
+            && (realBatchSize * buffer[curIdx + realBatchSize]->srcSent.Size() < batchSize)) {
+            if (maxSrcLen < buffer[curIdx + realBatchSize]->srcSent.Size())
+                maxSrcLen = buffer[curIdx + realBatchSize]->srcSent.Size();
+            realBatchSize++;
+        }
     }
 
     /* real batch size */
@@ -292,6 +294,7 @@ void TrainDataSet::BuildBucket()
 {
     size_t idx = 0;
 
+    /* build and shuffle buckets */
     while (idx < buffer.Size()) {
 
         /* sentence number in a bucket */
@@ -318,14 +321,26 @@ void TrainDataSet::BuildBucket()
 
         /* shuffle items in a bucket */
         for (size_t i = 0; i < sentNum; i++) {
-            buffer[idx + i]->key = rand();
             buffer[idx + i]->bucketKey = randomKey;
         }
-        SortInBucket(idx, idx + sentNum);
 
         idx += sentNum;
     }
     SortBucket();
+
+    /* sort items in a bucket */
+    idx = 0;
+    while (idx < buffer.Size()) {
+        size_t sentNum = 0;
+        int bucketKey = buffer[idx + sentNum]->bucketKey;
+        while (sentNum < (buffer.Size() - idx) 
+            && buffer[idx + sentNum]->bucketKey == bucketKey) {
+            buffer[idx + sentNum]->key = buffer[idx + sentNum]->srcSent.Size();
+            sentNum++;
+        }
+        SortInBucket(idx, idx + sentNum);
+        idx += sentNum;
+    }
 }
 
 /* de-constructor */

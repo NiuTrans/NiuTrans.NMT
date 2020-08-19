@@ -247,7 +247,6 @@ void Trainer::Train(const char* fn, const char* validFN,
                 nStepCheck = 0;
                 nCheckpoint++;
             }
-            break;
         }
 
         if (isEnd)

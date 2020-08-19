@@ -717,7 +717,7 @@ void * XMem::AllocStandard(int myDevID, MTYPE mySize, bool myIsRebuiltIndex)
                         SetDevice(myDevID);
                         cudaError_t e = cudaMalloc((void **)&block->mem, block->size);
                         if (e != cudaSuccess) {
-                            //PrintCallStack();
+                            PrintCallStack();
                             ShowNTErrors("Cannot allocate the memory.");
                         }
                         CheckNTErrors(cudaMemset(block->mem, 0, block->size) == cudaSuccess, "Cannot update the memory.");

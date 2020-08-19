@@ -118,10 +118,10 @@ UInt64List DataSet::LoadBatch(XTensor* batchEnc, XTensor* paddingEnc,
     size_t maxLen = inputBuffer[bufferUsed]->values.Size();
 
     /* dynamic batching for sentences */
-    while ((realBatchSize < (inputBuffer.Size() - bufferUsed))
-        && (realBatchSize * maxLen < batchSize)) {
-        realBatchSize++;
-    }
+    //while ((realBatchSize < (inputBuffer.Size() - bufferUsed))
+    //    && (realBatchSize * maxLen < batchSize)) {
+    //    realBatchSize++;
+    //}
 
     /* real batch size */
     if ((inputBuffer.Size() - bufferUsed) < realBatchSize) {

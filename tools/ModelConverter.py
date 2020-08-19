@@ -10,14 +10,18 @@ import argparse
 import numpy as np
 from struct import pack
 
-parser = argparse.ArgumentParser(description='The model converter for niutensor')
-parser.add_argument('-src', help='fairseq checkpoint', type=str, default='model.pt')
-parser.add_argument('-tgt', help='niutrans.nmt model', type=str, default='model.bin')
+parser = argparse.ArgumentParser(
+    description='The model converter for niutensor')
+parser.add_argument('-src', help='fairseq checkpoint',
+                    type=str, default='model.pt')
+parser.add_argument('-tgt', help='niutrans.nmt model',
+                    type=str, default='model.bin')
 parser.add_argument('-mode', help='storage mode', type=str, default='fp32')
 args = parser.parse_args()
 args.mode = args.mode.lower()
 
 model = torch.load(args.src, map_location='cpu')
+
 
 def get_model_parameters(m):
     '''
@@ -53,44 +57,49 @@ def get_model_parameters(m):
             else:
                 # bias
                 p.append(m['model'][k])
-    
+
     # encoder embedding weight
     p.append(encoder_emb)
-    
-    if m['args'].share_all_embeddings == False:
-        # decoder embedding weight
-        p.append(decoder_emb)
 
-    if m['args'].share_decoder_input_output_embed == False:    
-        # output weight
-        p.append(decoder_output_w.t())
+    # decoder embedding weight
+    if m['args'].share_all_embeddings == False:
+        p.append(decoder_emb)
+    else:
+        print('share all embeddings')
+
+    # decoder output weight
+    if m['args'].share_decoder_input_output_embed == False:
+        p.append(decoder_output_w)
+    else:
+        print('share decoder input output embeddings')
 
     return p
 
-with torch.no_grad():
-    params = get_model_parameters(model)
 
-    params_number = pack("Q", len(params))
-    params_size = pack("Q" * len(params), *[p.numel() for p in params])
+with torch.no_grad():
+
+    meta_info = {
+        'src_vocab_size': 0,
+        'tgt_vocab_size': 0,
+        'encoder_layer': model['args'].encoder_layers,
+        'decoder_layer': model['args'].decoder_layers,
+        'ffn_hidden_size': model['args'].encoder_ffn_embed_dim,
+        'hidden_size': model['args'].decoder_input_dim,
+        'emb_size': model['args'].encoder_embed_dim,
+        'head_num': model['args'].encoder_attention_heads,
+        'max_relative_length': model['args'].max_relative_length,
+        'share_all_embeddings': model['args'].share_all_embeddings,
+        'share_decoder_input_output_embed': model['args'].share_decoder_input_output_embed,
+        'max_source_positions': model['args'].max_source_positions,
+    }
+
+    params = get_model_parameters(model)
 
     print('total params: ', len(params))
     print('total params size: ', sum([p.numel() for p in params]))
-    meta_info = {
-        'src_vocab_size' : 0,
-        'tgt_vocab_size' : 0,
-        'encoder_layer' : model['args'].encoder_layers,
-        'decoder_layer' : model['args'].decoder_layers,
-        'ffn_hidden_size' : model['args'].encoder_ffn_embed_dim,
-        'hidden_size' : model['args'].decoder_input_dim,
-        'emb_size' : model['args'].encoder_embed_dim,
-        'head_num' : model['args'].encoder_attention_heads,
-        'max_relative_length' : model['args'].max_relative_length,
-        'share_all_embeddings' : model['args'].share_all_embeddings,
-        'share_decoder_input_output_embed' : model['args'].share_decoder_input_output_embed,
-        'max_source_positions' : model['args'].max_source_positions,
-    }
+
     model = model['model']
-    with open(args.tgt+".name.txt", "w") as name_list:
+    with open(args.tgt + ".name.txt", "w") as name_list:
         for p in model:
             name_list.write("{}\t{}\n".format(p, model[p].shape))
             if 'embed_tokens' in p:
@@ -124,8 +133,10 @@ with torch.no_grad():
         # part 2: values of parameters (in FP32 or FP16)
         for p in params:
             if args.mode == 'fp32':
-                values = pack("f" * p.numel(), *(p.contiguous().view(-1).cpu().numpy()))
+                values = pack("f" * p.numel(), *
+                              (p.contiguous().view(-1).cpu().numpy()))
                 tgt.write(values)
             elif args.mode == 'fp16':
-                values = pack("e" * p.numel(), *(p.contiguous().view(-1).cpu().numpy().astype(np.float16)))
+                values = pack(
+                    "e" * p.numel(), *(p.contiguous().view(-1).cpu().numpy().astype(np.float16)))
                 tgt.write(values)
