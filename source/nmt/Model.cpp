@@ -36,8 +36,8 @@ Model::Model()
     isLM = false;
     isMT = false;
     useFP16 = false;
-    shareAllEmbeddings = false;
-    shareDecInputOutputWeight = false;
+    shareAllEmbeddings = 0;
+    shareDecInputOutputWeight = 0;
     nhead = 1;
 
     encoder = new AttEncoder();
@@ -70,8 +70,8 @@ void Model::InitModel(Config& config)
         &config.fnnHiddenSize, &config.modelSize,
         &config.embSize, &config.srcVocabSize,
         &config.tgtVocabSize, &config.nhead,
-        &config.maxRP, &shareAllEmbeddings,
-        &shareDecInputOutputWeight,
+        &config.maxRP, &config.shareAllEmbeddings,
+        &config.shareDecInputOutputWeight,
         &config.maxPosLen
     };
 
@@ -80,17 +80,16 @@ void Model::InitModel(Config& config)
     /* read model configurations */
     if (!config.isTraining) {
         modelFile = fopen(config.modelFN, "rb");
-        CheckNTErrors(modelFile, "failed to open the model file");
+        CheckNTErrors(modelFile, "Failed to open the model file");
         for (auto& meta : metaInfo) {
             fread(meta, sizeof(int), 1, modelFile);
         }
     }
     else {
-        shareAllEmbeddings = config.shareAllEmbeddings;
-        shareDecInputOutputWeight = config.shareDecInputOutputWeight;
-
         /* read the source and target vocab size */
         FILE* trainF = fopen(config.trainFN, "rb");
+        CheckNTErrors(trainF, "Failed to open the training file");
+
         fread(&config.srcVocabSize, sizeof(config.srcVocabSize), 1, trainF);
         fread(&config.tgtVocabSize, sizeof(config.tgtVocabSize), 1, trainF);
         CheckNTErrors(config.srcVocabSize > 0, "Invalid source vocabulary size");
@@ -99,6 +98,8 @@ void Model::InitModel(Config& config)
     }
 
     nhead = config.nhead;
+    shareAllEmbeddings = config.shareAllEmbeddings;
+    shareDecInputOutputWeight = config.shareDecInputOutputWeight;
 
     ShowModelConfig(config);
 
@@ -112,7 +113,7 @@ void Model::InitModel(Config& config)
     if (!config.isTraining)
         Read(modelFile);
     else {
-        TensorList params(10);
+        TensorList params;
         GetParams(params);
         for (int i = 0; i < params.Size(); i++)
             params[i]->SetVarFlag();
@@ -122,9 +123,9 @@ void Model::InitModel(Config& config)
         fclose(modelFile);
 }
 
-/* 
-print model configurations 
->> config - model configurations 
+/*
+print model configurations
+>> config - model configurations
 */
 void Model::ShowModelConfig(Config& config)
 {
@@ -161,10 +162,10 @@ make the decoding network
 >> isTraining - indicates whether we are training the model
 << return - encoding result
 */
-XTensor Model::MakeDecoder(XTensor& inputDec, XTensor& outputEnc, 
-                              XTensor* mask, XTensor& maskEncDec, bool isTraining)
+XTensor Model::MakeDecoder(XTensor& inputDec, XTensor& outputEnc,
+    XTensor* mask, XTensor& maskEncDec, bool isTraining)
 {
-    return decoder->Make(inputDec, outputEnc, mask, &maskEncDec, 
+    return decoder->Make(inputDec, outputEnc, mask, &maskEncDec,
                          inputDec.GetDim(1), isTraining);
 }
 
@@ -211,19 +212,24 @@ make the network for machine translation (with the output softmax layer)
 >> isTraining - indicates whether the model is for training
 */
 void Model::MakeMT(XTensor& inputEnc, XTensor& inputDec, XTensor& output,
-                   XTensor& paddingEnc, XTensor& paddingDec, bool isTraining)
+    XTensor& paddingEnc, XTensor& paddingDec, bool isTraining)
 {
     XTensor encoding;
     XTensor decoding;
+
     XTensor maskEnc;
     XTensor maskDec;
     XTensor maskEncDec;
+
+    //DISABLE_GRAD;
 
     /* encoder mask */
     MakeMTMaskEnc(paddingEnc, maskEnc);
 
     /* decoder mask */
     MakeMTMaskDec(paddingEnc, paddingDec, maskDec, maskEncDec);
+
+    //ENABLE_GRAD;
 
     encoding = MakeEncoder(inputEnc, &maskEnc, isTraining);
 
@@ -243,8 +249,8 @@ make the mask for training MT models
 >> maksEncDec - mask of the decoder enc-dec attention
 */
 void Model::MakeMTMask(XTensor& inputEnc, XTensor& inputDec,
-                       XTensor& paddingEnc, XTensor& paddingDec,
-                       XTensor& maskEnc, XTensor& maskDec, XTensor& maskEncDec)
+    XTensor& paddingEnc, XTensor& paddingDec,
+    XTensor& maskEnc, XTensor& maskDec, XTensor& maskEncDec)
 {
     int len = inputDec.GetDim(inputDec.order - 1);
     int* dims = new int[inputDec.order + 2];
@@ -264,8 +270,8 @@ void Model::MakeMTMask(XTensor& inputEnc, XTensor& inputDec,
     dims[inputDec.order + 1] = inputEnc.GetDim(inputEnc.order - 1);
     InitTensor(&maskEncDec, inputDec.order + 2, dims, X_FLOAT, paddingEnc.devID);
 
-    XTensor* maskEncDecTMPEnc = NewTensorBuf(paddingEnc.order + 1, dims + 1, 
-                                paddingEnc.dataType, paddingEnc.devID);
+    XTensor* maskEncDecTMPEnc = NewTensorBuf(paddingEnc.order + 1, dims + 1,
+        paddingEnc.dataType, paddingEnc.devID);
     XTensor* maskEncDecTMPDec = NewTensorBuf(maskEncDecTMPEnc, paddingEnc.devID);
 
     _Unsqueeze(&paddingEnc, maskEncDecTMPEnc, paddingEnc.order - 1, paddingDec.GetDim(-1));
@@ -289,8 +295,7 @@ void Model::MakeMTMask(XTensor& inputEnc, XTensor& inputDec,
         dimsPadding[i + 1] = padding2->GetDim(i);
     dimsPadding[0] = nhead;
 
-    XTensor* padding3 = NewTensorBuf(paddingEnc.order + 2, dimsPadding, paddingEnc.dataType,
-        paddingEnc.devID);
+    XTensor* padding3 = NewTensorBuf(paddingEnc.order + 2, dimsPadding, paddingEnc.dataType, paddingEnc.devID);
 
     /* mask of the padding */
     _Unsqueeze(&paddingEnc, padding2, paddingEnc.order - 1, paddingEnc.GetDim(-1));
@@ -320,18 +325,11 @@ make the mask of the encoder
 void Model::MakeMTMaskEnc(XTensor& paddingEnc, XTensor& maskEnc)
 {
     XTensor padding2;
-    XTensor padding3;
 
     /* mask of the padding */
     Unsqueeze(paddingEnc, padding2, paddingEnc.order - 1, paddingEnc.GetDim(-1));
-    Unsqueeze(padding2, padding3, 0, nhead);
-    ScaleAndShiftMe(padding3, 1e9F, -1e9F);
-
-    InitTensor(&maskEnc, &padding3);
-    maskEnc.SetZeroAll();
-
-    /* generate the mask on the source language side (for padding) */
-    SumMe(maskEnc, padding3);
+    Unsqueeze(padding2, maskEnc, 0, nhead);
+    ScaleAndShiftMe(maskEnc, 1e9F, -1e9F);
 }
 
 /*
@@ -369,6 +367,7 @@ void Model::MakeMTMaskDec(XTensor& paddingEnc, XTensor& paddingDec,
 
     delete[] dims;
 }
+
 /*
 get parameter matrices
 >> list - the list that keeps the parameter matrics
@@ -464,7 +463,7 @@ void Model::Dump(const char* fn)
     FILE* file = fopen(fn, "wb");
     CheckNTErrors(file, "Cannot open the model file");
 
-    TensorList params(100);
+    TensorList params;
 
     GetParams(params);
 
@@ -497,12 +496,18 @@ void Model::Read(FILE* file)
 {
     double startT = GetClockSec();
 
-    TensorList params(100);
+    TensorList params;
     GetParams(params);
-    fprintf(stderr, "params count: %d\n", params.count);
+    fprintf(stderr, "params count: %d\n", params.Size());
+    int size = 0;
+    for (int i = 0; i < params.Size(); i++) {
+        size += params[i]->unitNum;
+    }
+    fprintf(stderr, "params size: %d\n", size);
 
     /* convert parameters to FP16 */
     if (useFP16) {
+        LOG("Convert parameters to FP16");
         for (int i = 0; i < params.Size(); i++) {
             XTensor* p = params[i];
             InitTensor(p, p->order, p->dimSize, X_FLOAT16, p->devID, p->enableGrad && X_ENABLE_GRAD);

@@ -189,8 +189,86 @@ XTensor AttDecoder::Make(XTensor& inputDec, XTensor& outputEnc, XTensor* mask,
     }
 
     if (preNorm)
-        x = decoderLayerNorm->Make(x);
+        return decoderLayerNorm->Make(x);
 
     return x;
 }
+
+/*
+make the decoding network
+>> inputDec - the input tensor of the decoder
+>> outputEnc - the output tensor of the encoder
+>> mask - mask that indicates which position is valid
+>> maskEncDec - mask for the encoder-decoder attention
+>> nstep - the current length of the decoder input
+>> isTraining - indicates whether the model is used for training
+<< return - the output tensor of the decoder
+*/
+XTensor AttDecoder::MakeFast(XTensor& inputDec, XTensor& outputEnc, XTensor* mask,
+                             XTensor* maskEncDec, int nstep, bool isTraining)
+{
+    XTensor x;
+
+    x = embedder.Make(inputDec, true, isTraining, nstep);
+
+    /* dropout */
+    if (isTraining && dropoutP > 0)
+        x = Dropout(x, dropoutP);
+
+    for (int i = 0; i < nlayer; i++) {
+        XTensor res;
+
+        res = x;
+
+        /* layer normalization with pre-norm for self-attn */
+        x = selfAttLayerNorms[i].Make(x);
+
+        /******************/
+        /* self attention */
+        x = selfAtt[i].Make(x, x, x, mask, isTraining, &selfAttCache[i], SELF_ATT);
+
+        /* dropout */
+        if (isTraining && dropoutP > 0)
+            x = Dropout(x, dropoutP);
+
+        /* residual connection */
+        x = Sum(res, x);
+
+        res = x;
+
+        /* layer normalization with pre-norm for encoder-decoder attention */
+        x = enDeAttLayerNorms[i].Make(x);
+
+        /* encoder-decoder attention */
+        x = enDeAtt[i].Make(outputEnc, x, outputEnc, maskEncDec,
+                            isTraining, &enDeAttCache[i], EN_DE_ATT);
+
+        /* dropout */
+        if (isTraining && dropoutP > 0)
+            x = Dropout(x, dropoutP);
+
+        /* residual connection */
+        x = Sum(res, x);
+
+        res = x;
+
+        /* layer normalization with pre-norm for fnn */
+        x = fnnLayerNorms[i].Make(x);
+
+        /* fnn */
+        x = fnns[i].Make(x, isTraining);
+
+        /* dropout */
+        if (isTraining && dropoutP > 0)
+            x = Dropout(x, dropoutP);
+
+        /* residual connection */
+        x = Sum(res, x);
+    }
+
+    x = decoderLayerNorm->Make(x);
+
+    return x;
+}
+
 }

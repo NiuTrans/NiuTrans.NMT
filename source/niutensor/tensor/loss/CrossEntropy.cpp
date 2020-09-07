@@ -241,7 +241,6 @@ XTensor GetReduceTensor(const XTensor & input, int dim)
     float dr = (!input.isSparse) ? 1.0F : input.denseRatio;
     XTensor output(order, dimSize, input.dataType, dr, input.devID, input.mem);
     output.SetTMPFlag();
-    delete[] dimSize;
 
     return output;
 }
@@ -280,7 +279,7 @@ XTensor CrossEntropy(const XTensor & output, const XTensor & gold,
     tails.Add(weight);
     tails.Add(padding);
 
-    if (output.enableGrad && X_ENABLE_GRAD) {
+    if (output.enableGrad) {
         XLink::MakeLink(&tails, &loss, LOSS_CROSSENTROPY);
         XLink::AddParamToHeadInt(&loss, dim);
     }
@@ -308,7 +307,7 @@ XTensor CrossEntropy(const XTensor & output, const XTensor & gold,
     tails.Add(weight);
     tails.Add((XTensor*)&padding);
 
-    if (output.enableGrad && X_ENABLE_GRAD) {
+    if (output.enableGrad) {
         XLink::MakeLink(&tails, &loss, LOSS_CROSSENTROPY);
         XLink::AddParamToHeadInt(&loss, dim);
     }

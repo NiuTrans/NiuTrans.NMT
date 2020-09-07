@@ -58,8 +58,6 @@ XDevice::~XDevice()
     MUTEX_DELE(cublasMutex);
     if(isHandleReady)
         cublasDestroy(cublasHandle);
-    if(stream != NULL)
-        delete stream;
     curandDestroyGenerator(gen);
 #endif
 }
@@ -263,6 +261,13 @@ void XDevice::SetFastFlagsAllDevices()
 #endif
 }
 
+/* delete the default stream for the device */
+void XDevice::DelDeviceStream()
+{
+    if(stream != NULL)
+        delete stream;
+}
+
 /* constructor */
 XDevManager::XDevManager()
 {
@@ -287,7 +292,7 @@ void XDevManager::Init()
     nCPU = 1;
 
     for(int i = 0; i < nCPU; i++)
-        CPUs[0].Init(-1);
+        CPUs[i].Init(-1);
 
     /* GPUs */
     int GPUCount = 0;
@@ -603,6 +608,17 @@ char * XDevManager::GetDevString(int devID)
     else{
         CheckNTErrors((devID < nGPU), "Illegal GPU id.");
         return GPUs[devID].name2;
+    }
+}
+
+/* delete the streams for all devices */
+void XDevManager::DelDeviceStream()
+{
+    for(int i = 0; i < GDevs.nCPU; i++) {
+        GDevs.CPUs[i].DelDeviceStream();
+    }
+    for(int i = 0; i < GDevs.nGPU; i++) {
+        GDevs.GPUs[i].DelDeviceStream();
     }
 }
 

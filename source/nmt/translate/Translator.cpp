@@ -55,17 +55,17 @@ void Translator::Init(Config& config)
     wordBatch = config.wBatchSize;
 
     if (beamSize > 1) {
-        XPRINT1(0, stderr, "Translating with beam search (%d)\n", beamSize);
+        LOG("Translating with beam search (%d)", beamSize);
         seacher = new BeamSearch();
         ((BeamSearch*)seacher)->Init(config);
     }
     else if (beamSize == 1) {
-        XPRINT(0, stderr, "Translating with greedy search \n");
+        LOG("Translating with greedy search");
         seacher = new GreedySearch();
         ((GreedySearch*)seacher)->Init(config);
     }
     else {
-        CheckNTErrors(false, "invalid beam size\n");
+        CheckNTErrors(false, "Invalid beam size\n");
     }
 }
 
@@ -96,8 +96,7 @@ void Translator::Translate(const char* ifn, const char* sfn,
     XTensor paddingEnc;
 
     batchLoader.Init(ifn, sfn, tfn);
-    XPRINT1(0, stderr, "[INFO] loaded the input file, elapsed=%.1fs \n", 
-            GetClockSec() - startT);
+    LOG("loaded the input file, elapsed=%.1fs ", GetClockSec() - startT);
 
     int count = 0;
     double batchStart = GetClockSec();
@@ -142,9 +141,9 @@ void Translator::Translate(const char* ifn, const char* sfn,
         if (count % 1 == 0) {
             double elapsed = GetClockSec() - batchStart;
             batchStart = GetClockSec();
-            XPRINT3(0, stderr, "[INFO] elapsed=%.1fs, sentence=%f, sword=%.1fw/s\n",
-                    elapsed, float(sentCount) / float(batchLoader.inputBuffer.Size()), 
-                    double(wc) / elapsed);
+            LOG("elapsed=%.1fs, sentence=%f, sword=%.1fw/s",
+                elapsed, float(sentCount) / float(batchLoader.inputBuffer.Size()), 
+                double(wc) / elapsed);
             wc = 0;
         }
     }
@@ -166,8 +165,8 @@ void Translator::Translate(const char* ifn, const char* sfn,
 
     double elapsed = GetClockSec() - startDump;
 
-    XPRINT2(0, stderr, "[INFO] translation completed (word=%d, sent=%zu)\n", 
-            wordCountTotal, batchLoader.inputBuffer.Size() + batchLoader.emptyLines.Size());
+    LOG("translation completed (word=%d, sent=%zu)", 
+        wordCountTotal, batchLoader.inputBuffer.Size() + batchLoader.emptyLines.Size());
 }
 
 /*

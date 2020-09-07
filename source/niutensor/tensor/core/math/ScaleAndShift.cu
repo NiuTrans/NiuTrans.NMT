@@ -131,7 +131,7 @@ void _CudaScaleAndShift(const XTensor * a, XTensor * b, DTYPE scale, DTYPE shift
             else
                 KernelScaleAndShift<half, false, false><<<blocks, threads >>>((half*)a->data, (half*)b->data, a->unitNum, scale2, shift2);
 #else
-        ShowNTErrors("-DUSE_FP16!");
+        ShowNTErrors("Recompile the code with HALF_PRECISION!");
 #endif
         }
         else if (a->dataType == X_INT) {

@@ -92,9 +92,30 @@ void _Sum(const XTensor * a, const XTensor * b, XTensor * c, DTYPE beta)
 #if defined(USE_BLAS)
                 if (c == a) {
                     AXPY(a->unitNum,beta,bp,1,cp,1);
-                    return;
                 }
-#endif
+                else {
+                    int num = a->unitNum;
+                    if (num % 4 == 0) {
+                        for (int i = 0; i < num; i += 4) {
+                                cp[i] = ap[i] + bp[i] * beta;
+                                cp[i + 1] = ap[i + 1] + bp[i + 1] * beta;
+                                cp[i + 2] = ap[i + 2] + bp[i + 2] * beta;
+                                cp[i + 3] = ap[i + 3] + bp[i + 3] * beta;
+                        }
+                    }
+                    else if (num % 2 == 0) {
+                        for (int i = 0; i < num; i += 2) {
+                            cp[i] = ap[i] + bp[i] * beta;
+                            cp[i + 1] = ap[i + 1] + bp[i + 1] * beta;
+                        }
+                    }
+                    else {
+                        for (int i = 0; i < num; i++) {
+                            cp[i] = ap[i] + bp[i] * beta;
+                        }
+                    }
+                }
+#else
                 /* unrolling */
                 int num = a->unitNum;
                 if (num % 4 == 0) {
@@ -116,6 +137,7 @@ void _Sum(const XTensor * a, const XTensor * b, XTensor * c, DTYPE beta)
                         cp[i] = ap[i] + bp[i] * beta;
                     }
                 }
+#endif
             }
             else if (a->dataType == X_INT &&
                      b->dataType == X_INT &&
@@ -260,7 +282,7 @@ XTensor Sum(const XTensor & a, const XTensor & b, DTYPE beta)
             _Sum(&a, &b, &c, beta);
 
             /* tensor connections */
-            if (a.enableGrad && b.enableGrad && X_ENABLE_GRAD) {
+            if (a.enableGrad && b.enableGrad) {
                 XLink::MakeLink(&a, &b, &c, MATH_SUM);
                 XLink::AddParamToHead(&c, beta);
             }
@@ -270,7 +292,7 @@ XTensor Sum(const XTensor & a, const XTensor & b, DTYPE beta)
             _SumDim(&a, &b, &c, n, beta);
 
             /* tensor connections */
-            if (a.enableGrad && b.enableGrad && X_ENABLE_GRAD) {
+            if (a.enableGrad && b.enableGrad) {
                 XLink::MakeLink(&a, &b, &c, MATH_SUMDIM);
                 XLink::AddParamToHeadInt(&c, n);
                 XLink::AddParamToHead(&c, beta);
@@ -308,7 +330,7 @@ void Sum(const XTensor & a, const XTensor & b, XTensor & c, DTYPE beta)
             _Sum(&a, &b, &c, beta);
 
             /* tensor connections */
-            if (a.enableGrad && b.enableGrad && X_ENABLE_GRAD) {
+            if (a.enableGrad && b.enableGrad) {
                 XLink::MakeLink(&a, &b, &c, MATH_SUM);
                 XLink::AddParamToHead(&c, beta);
             }
@@ -318,7 +340,7 @@ void Sum(const XTensor & a, const XTensor & b, XTensor & c, DTYPE beta)
             _SumDim(&a, &b, &c, n, beta);
 
             /* tensor connections */
-            if (a.enableGrad && b.enableGrad && X_ENABLE_GRAD) {
+            if (a.enableGrad && b.enableGrad) {
                 XLink::MakeLink(&a, &b, &c, MATH_SUMDIM);
                 XLink::AddParamToHeadInt(&c, n);
                 XLink::AddParamToHead(&c, beta);

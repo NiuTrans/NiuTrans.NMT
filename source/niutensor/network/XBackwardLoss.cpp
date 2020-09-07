@@ -60,6 +60,7 @@ void XLossGrad::MakeGrad(XTensor * node, bool isEfficient)
 
         //XTensor * tmp = NewTensorBufV2(output, output->devID, output->mem);
         XTensor* tmp = NewTensor(output);
+        tmp->SetZeroAll();
 
         if (operID == LOSS_CROSSENTROPY) {
             if (income.tailNum == 3)

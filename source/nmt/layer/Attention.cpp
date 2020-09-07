@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-/*
- * $Created by: XIAO Tong (xiaotong@mail.neu.edu.cn) 2018-07-31
- * $Modified by: HU Chi (huchinlp@gmail.com) 2020-04, 2020-06
- */
+ /*
+  * $Created by: XIAO Tong (xiaotong@mail.neu.edu.cn) 2018-07-31
+  * $Modified by: HU Chi (huchinlp@gmail.com) 2020-04, 2020-06
+  */
 
 #include "Attention.h"
 #include "Embedding.h"
@@ -63,8 +63,10 @@ void Attention::InitModel(Config& config)
     InitTensor1D(&biasK, d, X_FLOAT, devID);
     InitTensor2D(&weightV, d, d, X_FLOAT, devID);
     InitTensor1D(&biasV, d, X_FLOAT, devID);
+
     if (useRPR)
         InitTensor2D(&RPEmbK, maxRP * 2 + 1, d / nhead, X_FLOAT, devID);
+
     InitTensor2D(&weightO, d, d, X_FLOAT, devID);
     InitTensor1D(&biasO, d, X_FLOAT, devID);
 
@@ -73,11 +75,11 @@ void Attention::InitModel(Config& config)
     _SetDataFanInOut(&weightQ, scale);
     _SetDataFanInOut(&weightV, scale);
     _SetDataFanInOut(&weightO, scale);
+
     if (useRPR)
         _SetDataFanInOut(&RPEmbK, scale);
-    biasK.SetZeroAll();
+
     biasQ.SetZeroAll();
-    biasV.SetZeroAll();
     biasO.SetZeroAll();
 
     biasK.SetDataRand(-(DTYPE)sqrt(6.0F / d), (DTYPE)sqrt(6.0F / d));
@@ -98,7 +100,7 @@ make the network
 << return - multi-attention result
 */
 XTensor Attention::Make(XTensor& k, XTensor& q, XTensor& v, XTensor* mask,
-                        bool isTraining, Cache* cache, int cacheType)
+    bool isTraining, Cache* cache, int attType)
 {
     const bool isEnc = (!cache) ? true : false;
 
@@ -112,13 +114,13 @@ XTensor Attention::Make(XTensor& k, XTensor& q, XTensor& v, XTensor* mask,
         k2 = MulAndShift(k, weightK, biasK);
         v2 = MulAndShift(v, weightV, biasV);
 
-        if (useRPR)
+        if (useRPR && attType == SELF_ATT)
             return MakeRPRAttention(k2, q2, v2, mask, isTraining, isEnc);
         return MakeAttention(k2, q2, v2, mask, isTraining);
     }
 
     else {
-        if (cacheType == SELF_ATT) {
+        if (attType == SELF_ATT) {
             k2 = MulAndShift(k, weightK, biasK);
             v2 = MulAndShift(v, weightV, biasV);
 
@@ -135,7 +137,7 @@ XTensor Attention::Make(XTensor& k, XTensor& q, XTensor& v, XTensor* mask,
                 return MakeRPRAttention(cache->key, q2, cache->value, mask, isTraining, isEnc);
             return MakeAttention(cache->key, q2, cache->value, mask, isTraining);
         }
-        else if (cacheType == EN_DE_ATT) {
+        else if (attType == EN_DE_ATT) {
             if (cache->miss) {
                 cache->key = MulAndShift(k, weightK, biasK);
                 cache->value = MulAndShift(v, weightV, biasV);
@@ -157,7 +159,7 @@ make the attention network given keys, queries and values (after linear transfor
 >> isTraining - indicates whether the model is used for training
 */
 XTensor Attention::MakeAttention(XTensor& k, XTensor& q, XTensor& v,
-                                 XTensor* mask, bool isTraining)
+    XTensor* mask, bool isTraining)
 {
     XTensor kheads;
     XTensor qheads;
@@ -186,7 +188,7 @@ XTensor Attention::MakeAttention(XTensor& k, XTensor& q, XTensor& v,
     dot = BMMul(qheads, X_NOTRANS, kheads, X_TRANS);
 
     if (mask)
-        dot = dot + (*mask);
+        dot = dot + *mask;
 
     dot = Linear(dot, 1.0F / (float)sqrt((float)dk / nhead));
 
@@ -224,9 +226,9 @@ XTensor Attention::MakeRPRAttention(XTensor& k, XTensor& q, XTensor& v,
     XTensor qheads;
     XTensor vheads;
 
-    const int batchSize = q.dimSize[0];
-    const int lenQ = q.dimSize[1];
-    const int lenKV = k.dimSize[1];
+    const int batchSize = q.GetDim(0);
+    const int lenQ = q.GetDim(1);
+    const int lenKV = k.GetDim(1);
 
     const auto dataType = k.dataType;
 
@@ -242,7 +244,7 @@ XTensor Attention::MakeRPRAttention(XTensor& k, XTensor& q, XTensor& v,
     XTensor embMatrix, relativeKey;
 
     /* generate the relative emb index (L_q, L_kv) */
-    embMatrix = GetRPEmbedding(lenQ, lenKV, maxRP, isEnc);
+    embMatrix = GetRPEmbedding(lenQ, lenKV, maxRP, isEnc || isTraining);
 
     /* generate the relative key from the RPEmbK (L_q, L_kv, H/K) */
     relativeKey = Gather(RPEmbK, embMatrix);
@@ -253,12 +255,13 @@ XTensor Attention::MakeRPRAttention(XTensor& k, XTensor& q, XTensor& v,
         relativeKey = ConvertDataType(relativeKey, X_FLOAT);
     }
 
-    qheads = ScaleAndShift(qheads, 1.0F / float(nhead));
+    float scaling = sqrt(d / nhead);
+    qheads = ScaleAndShift(qheads, 1.0F / scaling);
 
     dot = RPDotProduct(qheads, kheads, relativeKey, true);
 
     if (mask)
-        dot = dot + (*mask);
+        dot = dot + *mask;
 
     /* softmax */
     scalar = Softmax(dot, -1);
@@ -286,7 +289,7 @@ generate relative position embeddings
 >> maxRelativeLen - the maximum length of relative position
 */
 XTensor Attention::GetRPEmbedding(const int lenQ, const int lenKV,
-                                  const int maxRelativeLen, const bool isEnc)
+    const int maxRelativeLen, const bool isEnc)
 {
     XTensor range;
     XTensor embMatrix;
@@ -310,6 +313,7 @@ XTensor Attention::GetRPEmbedding(const int lenQ, const int lenKV,
         embMatrix = Unsqueeze(range, 0, lenQ);
     }
 
+    //ClipMe(embMatrix, -float(maxRelativeLen), float(maxRelativeLen));
     embMatrix = Clip(embMatrix, -float(maxRelativeLen), float(maxRelativeLen));
     embMatrix = ScaleAndShift(embMatrix, 1.0F, float(maxRelativeLen));
 
@@ -328,20 +332,27 @@ relative position-aware dot-product attention inner calculation.
 XTensor Attention::RPDotProduct(XTensor& x, XTensor& y, XTensor& z, const bool isKey)
 {
     const int headNum = nhead;
-    const int batchSize = x.dimSize[1];
-    const int lenQ = x.dimSize[2];
-    const int lenKV = y.dimSize[2];
-    const int depth = y.dimSize[3];
+    const int batchSize = x.GetDim(1);
+    const int lenQ = x.GetDim(2);
+    const int lenKV = y.GetDim(2);
+    const int depth = y.GetDim(3);
 
     const int lastDim = isKey ? lenKV : depth;
-    MATRIX_TRANS_TYPE transposeFlag = isKey ? X_TRANS : X_NOTRANS;
+    auto transposeFlag = isKey ? X_TRANS : X_NOTRANS;
+
+    int mergeDimsX[] = { headNum * batchSize, lenQ, x.GetDim(3) };
+    int mergeDimsY[] = { headNum * batchSize, lenKV, y.GetDim(3) };
+    x = Reshape(x, 3, mergeDimsX);
+    y = Reshape(y, 3, mergeDimsY);
+
+    if (isKey) {
+        y = Transpose(y, 1, 2);
+    }
 
     XTensor context;
-    context = MatrixMulBatched(x, X_NOTRANS, y, transposeFlag);
-
-    int mergeDims[] = { headNum * batchSize, lenQ, x.dimSize[3] };
-    x = Reshape(x, 3, mergeDims);
-    //x.Reshape(3, mergeDims);
+    context = BMMul(x, y);
+    int newDims[]{ headNum, batchSize, context.GetDim(1), context.GetDim(2) };
+    context = Reshape(context, 4, newDims);
 
     XTensor xTrans;
     xTrans = Transpose(x, 0, 1);
@@ -355,9 +366,8 @@ XTensor Attention::RPDotProduct(XTensor& x, XTensor& y, XTensor& z, const bool i
     int splitDims[] = { headNum, batchSize, lenQ, lastDim };
 
     relativeTrans = Reshape(relativeTrans, 4, splitDims);
-    //relativeTrans.Reshape(4, splitDims);
 
-    return Sum(context, relativeTrans);
+    return context + relativeTrans;
 }
 
 /* constructor */

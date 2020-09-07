@@ -75,7 +75,7 @@ XTensor ReduceVariance(const XTensor &input, int dim, const XTensor &mean)
     _ReduceVariance(&input, &output, dim, &mean);
                 
     /* tensor connection */
-    if (input.enableGrad && X_ENABLE_GRAD) {
+    if (input.enableGrad) {
         XLink::MakeLink(&input, &mean, &output, REDUCE_REDUCEVARIANCE);
         XLink::AddParamToHeadInt(&output, dim);
     }
@@ -120,7 +120,7 @@ void ReduceVariance(const XTensor &input, XTensor &output, int dim, const XTenso
     /* call _ReduceVariance function */
     _ReduceVariance(&input, &output, dim, &mean);
 
-    if (input.enableGrad && X_ENABLE_GRAD) {
+    if (input.enableGrad) {
         /* tensor connection */
         XLink::MakeLink(&input, &mean, &output, REDUCE_REDUCEVARIANCE);
         XLink::AddParamToHeadInt(&output, dim);

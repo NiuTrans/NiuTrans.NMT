@@ -96,6 +96,10 @@ public:
     /* make the decoding network */
     XTensor Make(XTensor& inputDec, XTensor& outputEnc, XTensor* mask,
                  XTensor* maskEncDec, int nstep, bool isTraining);
+
+    /* make the decoding network (pre norm) */
+    XTensor MakeFast(XTensor& inputDec, XTensor& outputEnc, XTensor* mask,
+                     XTensor* maskEncDec, int nstep, bool isTraining);
 };
 
 }

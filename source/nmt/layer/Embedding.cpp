@@ -116,49 +116,36 @@ XTensor Embedder::Make(XTensor& input, bool isDec, bool isTraining, int nstep)
     CheckNTErrors(eSize > 0, "Set embedding size by \"-esize\"");
 
     XTensor wordEmbedding, position, posEmbedding;
-    InitTensor(&position, &input);
 
-    int* posData = new int[input.unitNum];
+    InitTensor1D(&position, input.GetDim(-1), X_INT, devID);
 
-    XTensor inputCPU;
-    InitTensorOnCPU(&inputCPU, &input);
-    _CopyValues(&input, &inputCPU);
-
-    if (!isDec)
+    if (!isDec || isTraining || input.GetDim(-1) > 1)
     {
-        /* encoder embeddings */
-        for (int i = 0; i < inputCPU.dimSize[0]; i++) {
-            int startNoPad = 1 + 1;
-            int* p = ((int*)inputCPU.data) + i * inputCPU.dimSize[1];
-            for (int j = 0; j < inputCPU.dimSize[1]; j++) {
-                if (p[j] == padIdx) {
-                    posData[i * inputCPU.dimSize[1] + j] = 1;
-                }
-                else {
-                    posData[i * inputCPU.dimSize[1] + j] = startNoPad++;
-                }
-            }
-        }
-        position.SetData(posData, position.unitNum);
+        position.Range(0, position.unitNum, 1);
+
+        // disable grad
+        ScaleAndShiftMe(position, 1.0F, float(padIdx + 1));
     }
     else
     {
-        /* decoder embeddings */
-        position.SetDataFixed(nstep + 2);
+        /* decoder embeddings during decoding */
+        position.SetDataFixed(nstep + padIdx + 1);
     }
 
-    delete[] posData;
-
     /* we make positional embeddings first */
-    posEmbedding = Gather(posEmbeddingBase, position);
+    XTensor embTMP;
+    embTMP = Gather(posEmbeddingBase, position);
+    posEmbedding = Unsqueeze(embTMP, 0, input.GetDim(0));
 
     /* then we make word embeddings */
+    //w.enableGrad = false;
     wordEmbedding = Gather(w, input);
 
     wordEmbedding = Linear(wordEmbedding, (float)sqrt((float)eSize));
 
     /* we sum over the two embeddings */
-    return wordEmbedding + posEmbedding;
+    SumMe(wordEmbedding, posEmbedding);
+    return wordEmbedding;
 }
 
 }

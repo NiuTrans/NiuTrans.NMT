@@ -43,7 +43,6 @@ typedef enum CBLAS_UPLO      {CblasUpper=121, CblasLower=122} CBLAS_UPLO;
 typedef enum CBLAS_DIAG      {CblasNonUnit=131, CblasUnit=132} CBLAS_DIAG;
 typedef enum CBLAS_SIDE      {CblasLeft=141, CblasRight=142} CBLAS_SIDE;
 
-
 #if defined(USE_BLAS)
 #ifdef OPENBLAS
 #define XBLAS_SGEMM cblas_sgemm

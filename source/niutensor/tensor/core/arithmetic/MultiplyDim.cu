@@ -199,7 +199,7 @@ void _CudaMultiplyDim(const XTensor * a, const XTensor * b, XTensor * c, int n, 
             ShowNTErrors("Something is wrong!");
         }
 #else
-        ShowNTErrors("-DUSE_FP16!");
+        ShowNTErrors("Recompile the code with HALF_PRECISION!");
 #endif
     }
     else {

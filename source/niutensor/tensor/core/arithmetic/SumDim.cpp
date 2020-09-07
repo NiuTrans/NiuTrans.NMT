@@ -168,7 +168,7 @@ XTensor SumDim(const XTensor &a, const XTensor &b, int n, DTYPE beta)
     _SumDim(&a, &b, &c, n, beta);
     
     /* tensor connections */
-    if (a.enableGrad && b.enableGrad && X_ENABLE_GRAD) {
+    if (a.enableGrad && b.enableGrad) {
         XLink::MakeLink(&a, &b, &c, MATH_SUMDIM);
         XLink::AddParamToHeadInt(&c, n);
         XLink::AddParamToHead(&c, beta);
@@ -199,7 +199,7 @@ void SumDim(const XTensor &a, const XTensor &b, XTensor &c, int n, DTYPE beta)
     /* call _SumDim function */
     _SumDim(&a, &b, &c, n, beta);
 
-    if (a.enableGrad && b.enableGrad && X_ENABLE_GRAD) {
+    if (a.enableGrad && b.enableGrad) {
         /* tensor connections */
         XLink::MakeLink(&a, &b, &c, MATH_SUMDIM);
         XLink::AddParamToHeadInt(&c, n);
@@ -342,7 +342,7 @@ XTensor SumBroadcast(const XTensor &a, const XTensor &b, DTYPE beta)
     _SumBroadcast(&a, &b, &c, beta);
     
     /* tensor connections */
-    if (a.enableGrad && b.enableGrad && X_ENABLE_GRAD) {
+    if (a.enableGrad && b.enableGrad) {
         XLink::MakeLink(&a, &b, &c, MATH_SUMBROADCAST);
         XLink::AddParamToHead(&c, beta);
     }
@@ -368,7 +368,7 @@ void SumBroadcast(const XTensor &a, const XTensor &b, XTensor &c, DTYPE beta)
     /* call _SumBroadcast function */
     _SumBroadcast(&a, &b, &c, beta);
 
-    if (a.enableGrad && b.enableGrad && X_ENABLE_GRAD) {
+    if (a.enableGrad && b.enableGrad) {
         /* tensor connections */
         XLink::MakeLink(&a, &b, &c, MATH_SUMBROADCAST);
         XLink::AddParamToHead(&c, beta);

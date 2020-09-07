@@ -36,7 +36,7 @@ int NMTMain(int argc, const char** argv)
     /* load configurations */
     Config config(argc, argv);
 
-    srand((unsigned int)time(NULL));
+    srand(1);
 
     /* training */
     if (strcmp(config.trainFN, "") != 0) {

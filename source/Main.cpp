@@ -23,8 +23,27 @@
 //#include <crtdbg.h>
 
 #include "./nmt/NMT.h"
+#include "niutensor/network/XNoder.h"
+#include "niutensor/tensor/XTensor.h"
+#include "niutensor/tensor/core/movement/Spread.h"
 
 using namespace nmt;
+using namespace nts;
+
+void test() {
+    XTensor input, node, index;
+    InitTensor2D(&input, 32, 4);
+    InitTensor2D(&input, 13, 4);
+    InitTensor2D(&input, 32, 4);
+
+    XNoder::MakeGrad(&input);
+
+    XTensor* tmp = NewTensorBufV2(&input, input.devID, input.mem);
+    _SpreadForGather(tmp, node.grad, &index);
+
+    _SumMe(input.grad, tmp);
+    input.grad->Dump(stderr);
+}
 
 int main(int argc, const char** argv)
 {
@@ -33,7 +52,7 @@ int main(int argc, const char** argv)
 
     NMTMain(argc - 1, argv + 1);
 
-    //test(argc, argv);
+    //test();
 
     //_CrtDumpMemoryLeaks();
     

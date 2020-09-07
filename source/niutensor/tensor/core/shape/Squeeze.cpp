@@ -122,7 +122,7 @@ XTensor Squeeze(XTensor & source, int leadingDim)
     _Squeeze(&source, &target, leadingDim);
 
     /* tensor connections */
-    if (source.enableGrad && X_ENABLE_GRAD) {
+    if (source.enableGrad) {
         XLink::MakeLink(&source, NULL, &target, SHAPE_SQUEEZE);
     }
 
@@ -138,7 +138,7 @@ void Squeeze(XTensor & source, XTensor & target, int leadingDim)
     /* call _Squeeze function */
     _Squeeze(&source, &target, leadingDim);
 
-    if (source.enableGrad && X_ENABLE_GRAD) {
+    if (source.enableGrad) {
         /* tensor connections */
         XLink::MakeLink(&source, NULL, &target, SHAPE_SQUEEZE);
     }

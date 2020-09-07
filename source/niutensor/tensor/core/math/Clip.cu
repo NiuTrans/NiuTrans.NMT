@@ -85,7 +85,7 @@ void _CudaClip(const XTensor * a, XTensor * b, DTYPE lower, DTYPE upper)
         half upper2 = __float2half(upper);
         KernelClip << <blocks, threads >> >((__half*)a->data, (__half*)b->data, lower2, upper2, a->unitNum);
 #else
-        ShowNTErrors("-DUSE_FP16!");
+        ShowNTErrors("Recompile the code with HALF_PRECISION!");
 #endif
     }
     else if (a->dataType == X_INT) {

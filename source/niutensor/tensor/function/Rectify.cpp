@@ -71,7 +71,7 @@ XTensor Rectify(const XTensor &x)
     _Rectify(&x, &y);
 
     /* tensor connection */
-    if (x.enableGrad && X_ENABLE_GRAD) {
+    if (x.enableGrad) {
         XLink::MakeLink(&x, NULL, &y, FUNC_RECTIFY);
     }
 
@@ -87,7 +87,7 @@ void Rectify(const XTensor &x, XTensor &y)
     /* call _Rectify function */
     _Rectify(&x, &y);
 
-    if (x.enableGrad && X_ENABLE_GRAD) {
+    if (x.enableGrad) {
         /* tensor connection */
         XLink::MakeLink(&x, NULL, &y, FUNC_RECTIFY);
     }

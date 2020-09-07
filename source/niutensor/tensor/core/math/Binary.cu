@@ -177,7 +177,7 @@ void _Cuda##funcName(const XTensor * a, XTensor * b, T num)                     
                          ((int*)a->data, (int*)b->data, a->unitNum, (T)num);        \
     }                                                                               \
     else if (a->dataType == X_FLOAT16) {                                            \
-        ShowNTErrors("-DUSE_FP16!");            \
+        ShowNTErrors("Recompile the code with HALF_PRECISION!");            \
     }                                                                               \
     else {                                                                          \
         ShowNTErrors("TODO!");                                                      \

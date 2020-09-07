@@ -81,7 +81,7 @@ XTensor DropoutWithIndex(const XTensor &x, XTensor &maskIndex, DTYPE scale)
     _ScaleAndShiftMe(&c, scale);
 
     /* tensor connections */
-    if (x.enableGrad && X_ENABLE_GRAD) {
+    if (x.enableGrad) {
         XLink::MakeLink(&x, &maskIndex, &c, MOVEMENT_DROPOUTWITHINDEX);
         XLink::AddParamToHead(&c, scale);
     }

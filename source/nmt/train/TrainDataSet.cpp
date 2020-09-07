@@ -1,4 +1,4 @@
-/* NiuTrans.NMT - an open-source neural machine translation system.
+ï»¿/* NiuTrans.NMT - an open-source neural machine translation system.
  * Copyright (C) 2020 NiuTrans Research. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,7 +35,7 @@ namespace nts {
 
 /* sort the dataset by length (in descending order) */
 void TrainDataSet::SortByLength() {
-    sort(buffer.items, buffer.items + buffer.count, 
+    sort(buffer.items, buffer.items + buffer.count,
         [](TrainExample* a, TrainExample* b) {
             return (a->srcSent.Size() + a->tgtSent.Size())
                  > (b->srcSent.Size() + b->tgtSent.Size());
@@ -50,8 +50,8 @@ void TrainDataSet::SortBucket() {
         });
 }
 
-/* 
-sort the output by key in a range (in descending order) 
+/*
+sort the output by key in a range (in descending order)
 >> begin - the first index of the range
 >> end - the last index of the range
 */
@@ -79,7 +79,7 @@ void TrainDataSet::LoadDataToBuffer()
 
     int id = 0;
     uint64_t sentNum = 0;
-    
+
     int srcVocabSize = 0;
     int tgtVocabSize = 0;
     fread(&srcVocabSize, sizeof(srcVocabSize), 1, fp);
@@ -101,21 +101,13 @@ void TrainDataSet::LoadDataToBuffer()
         srcSent.ReadFromFile(fp, srcLen);
         tgtSent.ReadFromFile(fp, tgtLen);
 
-        /* TODO: refactor this */
-        const int MAX_SENT_LEN = 120;
+        TrainExample* example = new TrainExample;
+        example->id = id++;
+        example->key = id;
+        example->srcSent = srcSent;
+        example->tgtSent = tgtSent;
 
-        if (srcLen > MAX_SENT_LEN || tgtLen > MAX_SENT_LEN) {
-            id++;
-        }
-        else {
-            TrainExample* example = new TrainExample;
-            example->id = id++;
-            example->key = id;
-            example->srcSent = srcSent;
-            example->tgtSent = tgtSent;
-
-            buffer.Add(example);
-        }
+        buffer.Add(example);
     }
 
     fclose(fp);
@@ -133,7 +125,7 @@ load a mini-batch to the device (for training)
 >> minSentBatch - the minimum number of sentence batch
 >> batchSize - the maxium number of words in a batch
 >> devID - the device id, -1 for the CPU
-<< return - two number £¨number of source & target tokens)
+<< return - number of target tokens and sentences
 */
 UInt64List TrainDataSet::LoadBatch(XTensor* batchEnc, XTensor* paddingEnc,
                                    XTensor* batchDec, XTensor* paddingDec, XTensor* label,
@@ -142,7 +134,7 @@ UInt64List TrainDataSet::LoadBatch(XTensor* batchEnc, XTensor* paddingEnc,
     UInt64List info;
     size_t srcTokenNum = 0;
     size_t tgtTokenNum = 0;
-    size_t realBatchSize = 1;
+    int realBatchSize = 1;
 
     if (!isTraining)
         realBatchSize = minSentBatch;
@@ -150,27 +142,37 @@ UInt64List TrainDataSet::LoadBatch(XTensor* batchEnc, XTensor* paddingEnc,
     /* get the maximum source sentence length in a mini-batch */
     size_t maxSrcLen = buffer[curIdx]->srcSent.Size();
 
+    /* max batch size */
+    const int MAX_BATCH_SIZE = 512;
+
     /* dynamic batching for sentences, enabled when the dataset is used for training */
     if (isTraining) {
         while ((realBatchSize < (buffer.Size() - curIdx))
             && (realBatchSize * maxSrcLen < batchSize)
+            && (realBatchSize < MAX_BATCH_SIZE)
             && (realBatchSize * buffer[curIdx + realBatchSize]->srcSent.Size() < batchSize)) {
             if (maxSrcLen < buffer[curIdx + realBatchSize]->srcSent.Size())
                 maxSrcLen = buffer[curIdx + realBatchSize]->srcSent.Size();
             realBatchSize++;
         }
     }
-
+    
     /* real batch size */
     if ((buffer.Size() - curIdx) < realBatchSize) {
         realBatchSize = buffer.Size() - curIdx;
     }
+
+    CheckNTErrors(realBatchSize > 0, "Invalid batch size");
 
     /* get the maximum target sentence length in a mini-batch */
     size_t maxTgtLen = buffer[curIdx]->tgtSent.Size();
     for (size_t i = 0; i < realBatchSize; i++) {
         if (maxTgtLen < buffer[curIdx + i]->tgtSent.Size())
             maxTgtLen = buffer[curIdx + i]->tgtSent.Size();
+    }
+    for (size_t i = 0; i < realBatchSize; i++) {
+        if (maxSrcLen < buffer[curIdx + i]->srcSent.Size())
+            maxSrcLen = buffer[curIdx + i]->srcSent.Size();
     }
 
     CheckNTErrors(maxSrcLen != 0, "Invalid source length for batching");
@@ -184,7 +186,7 @@ UInt64List TrainDataSet::LoadBatch(XTensor* batchEnc, XTensor* paddingEnc,
 
     for (int i = 0; i < realBatchSize * maxSrcLen; i++) {
         batchEncValues[i] = PAD;
-        paddingEncValues[i] = 0;
+        paddingEncValues[i] = 1;
     }
     for (int i = 0; i < realBatchSize * maxTgtLen; i++) {
         batchDecValues[i] = PAD;
@@ -195,7 +197,7 @@ UInt64List TrainDataSet::LoadBatch(XTensor* batchEnc, XTensor* paddingEnc,
     size_t curSrc = 0;
     size_t curTgt = 0;
 
-    /* 
+    /*
     batchEnc: end with EOS (left padding)
     batchDec: begin with SOS (right padding)
     label:    end with EOS (right padding)
@@ -205,10 +207,9 @@ UInt64List TrainDataSet::LoadBatch(XTensor* batchEnc, XTensor* paddingEnc,
         srcTokenNum += buffer[curIdx + i]->srcSent.Size();
         tgtTokenNum += buffer[curIdx + i]->tgtSent.Size();
 
-        curSrc = maxSrcLen * (i + 1) - buffer[curIdx + i]->srcSent.Size();
+        curSrc = maxSrcLen * i;
         for (int j = 0; j < buffer[curIdx + i]->srcSent.Size(); j++) {
-            batchEncValues[curSrc] = buffer[curIdx + i]->srcSent[j];
-            paddingEncValues[curSrc++] = 1.0F;
+            batchEncValues[curSrc++] = buffer[curIdx + i]->srcSent[j];
         }
 
         curTgt = maxTgtLen * i;
@@ -218,9 +219,11 @@ UInt64List TrainDataSet::LoadBatch(XTensor* batchEnc, XTensor* paddingEnc,
             batchDecValues[curTgt++] = buffer[curIdx + i]->tgtSent[j];
         }
         labelVaues[curTgt - 1] = EOS;
+        while (curSrc < maxSrcLen * (i + 1))
+            paddingEncValues[curSrc++] = 0;
         while (curTgt < maxTgtLen * (i + 1))
             paddingDecValues[curTgt++] = 0;
-        
+
     }
 
     InitTensor2D(batchEnc, realBatchSize, maxSrcLen, X_INT, devID);
@@ -243,8 +246,8 @@ UInt64List TrainDataSet::LoadBatch(XTensor* batchEnc, XTensor* paddingEnc,
     delete[] paddingDecValues;
     delete[] labelVaues;
 
-    info.Add(srcTokenNum);
     info.Add(tgtTokenNum);
+    info.Add(realBatchSize);
     return info;
 }
 
@@ -266,7 +269,7 @@ void TrainDataSet::Init(const char* dataFile, int myBucketSize, bool training)
 
     SortByLength();
 
-    if(isTraining)
+    if (isTraining)
         BuildBucket();
 }
 
@@ -333,7 +336,7 @@ void TrainDataSet::BuildBucket()
     while (idx < buffer.Size()) {
         size_t sentNum = 0;
         int bucketKey = buffer[idx + sentNum]->bucketKey;
-        while (sentNum < (buffer.Size() - idx) 
+        while (sentNum < (buffer.Size() - idx)
             && buffer[idx + sentNum]->bucketKey == bucketKey) {
             buffer[idx + sentNum]->key = buffer[idx + sentNum]->srcSent.Size();
             sentNum++;

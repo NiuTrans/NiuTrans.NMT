@@ -71,7 +71,7 @@ void _CudaRectify(const XTensor * x, XTensor * y)
         KernelRectify<<<dim3(gridSize[0]), dim3(blockSize[0]) >> >
                         ((__half*)x->data, (__half*)y->data, x->unitNum);
 #else
-        ShowNTErrors("-DUSE_FP16!");
+        ShowNTErrors("Recompile the code with HALF_PRECISION!");
 #endif
     }
     else {
@@ -150,7 +150,7 @@ void _CudaRectifyBackward(XTensor * y, XTensor * x,
                                (__half*)x->data,
                                 x->unitNum);
 #else
-        ShowNTErrors("-DUSE_FP16!");
+        ShowNTErrors("Recompile the code with HALF_PRECISION!");
 #endif
     }
     else {

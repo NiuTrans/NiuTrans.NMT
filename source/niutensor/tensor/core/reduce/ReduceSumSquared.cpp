@@ -73,7 +73,7 @@ XTensor ReduceSumSquared(const XTensor &input, int dim, const XTensor &shift)
     _ReduceSumSquared(&input, &output, dim, &shift);
                     
     /* tensor connection */
-    if (input.enableGrad && X_ENABLE_GRAD) {
+    if (input.enableGrad) {
         XLink::MakeLink(&input, &shift, &output, REDUCE_REDUCESUMSQUARED);
         XLink::AddParamToHeadInt(&output, dim);
     }
@@ -118,7 +118,7 @@ void ReduceSumSquared(const XTensor &input, XTensor &output, int dim, const XTen
     /* call _ReduceSumSquared function */
     _ReduceSumSquared(&input, &output, dim, &shift);
 
-    if (input.enableGrad && X_ENABLE_GRAD) {
+    if (input.enableGrad) {
         /* tensor connections */
         XLink::MakeLink(&input, &shift, &output, REDUCE_REDUCESUMSQUARED);
         XLink::AddParamToHeadInt(&output, dim);

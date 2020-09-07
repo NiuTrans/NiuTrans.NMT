@@ -869,7 +869,7 @@ void _CudaTopK(const XTensor * a, XTensor * b, XTensor * index, int dim, int k, 
                                  ((__half*)a->data, stride, strideNumA, blockNum, k, DTYPE_MIN,
                                  (__half*)b->data, (int*)index->data, isSorted);
 #else
-            ShowNTErrors("-DUSE_FP16!");
+            ShowNTErrors("Recompile the code with HALF_PRECISION!");
 #endif
         }
         else {

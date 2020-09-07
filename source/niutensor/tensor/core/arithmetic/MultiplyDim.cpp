@@ -181,7 +181,7 @@ XTensor MultiplyDim(const XTensor &a, const XTensor &b, int n)
     _MultiplyDim(&a, &b, &c, n, 0);
 
     /* tensor connections */
-    if (a.enableGrad && b.enableGrad && X_ENABLE_GRAD) {
+    if (a.enableGrad && b.enableGrad) {
         XLink::MakeLink(&a, &b, &c, MATH_MULTIPLYDIM);
         XLink::AddParamToHeadInt(&c, n);
         XLink::AddParamToHead(&c, 0);
@@ -211,7 +211,7 @@ void MultiplyDim(const XTensor &a, const XTensor &b, XTensor &c, int n)
     /* call _Multiply function */
     _MultiplyDim(&a, &b, &c, n, 0);
 
-    if (a.enableGrad && b.enableGrad && X_ENABLE_GRAD) {
+    if (a.enableGrad && b.enableGrad) {
         /* tensor connections */
         XLink::MakeLink(&a, &b, &c, MATH_MULTIPLYDIM);
         XLink::AddParamToHeadInt(&c, n);
@@ -353,7 +353,7 @@ XTensor MultiplyBroadcast(const XTensor &a, const XTensor &b)
     _MultiplyBroadcast(&a, &b, &c, 0);
     
     /* tensor connections */
-    if (a.enableGrad && b.enableGrad && X_ENABLE_GRAD) {
+    if (a.enableGrad && b.enableGrad) {
         XLink::MakeLink(&a, &b, &c, MATH_MULTIPLYBROADCAST);
         XLink::AddParamToHead(&c, 0);
     }
@@ -379,7 +379,7 @@ void MultiplyBroadcast(const XTensor &a, const XTensor &b, XTensor &c)
     /* call _SumBroadcast function */
     _MultiplyBroadcast(&a, &b, &c, 0);
 
-    if (a.enableGrad && b.enableGrad && X_ENABLE_GRAD) {
+    if (a.enableGrad && b.enableGrad) {
         /* tensor connections */
         XLink::MakeLink(&a, &b, &c, MATH_MULTIPLYBROADCAST);
         XLink::AddParamToHead(&c, 0);

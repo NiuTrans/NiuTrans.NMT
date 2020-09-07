@@ -188,7 +188,7 @@ XTensor LogSoftmax(const XTensor &x, int leadDim)
     _LogSoftmax(&x, &y, ld);
 
     /* tensor connection */
-    if (x.enableGrad && X_ENABLE_GRAD) {
+    if (x.enableGrad) {
         XLink::MakeLink(&x, NULL, &y, FUNC_LOGSOFTMAX);
         XLink::AddParamToHeadInt(&y, ld);
     }
@@ -217,7 +217,7 @@ void LogSoftmax(const XTensor &x, XTensor &y, int leadDim)
     /* call _LogSoftmax function */
     _LogSoftmax(&x, &y, ld);
 
-    if (x.enableGrad && X_ENABLE_GRAD) {
+    if (x.enableGrad) {
         /* tensor connection */
         XLink::MakeLink(&x, NULL, &y, FUNC_LOGSOFTMAX);
         XLink::AddParamToHeadInt(&y, ld);

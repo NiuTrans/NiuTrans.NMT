@@ -65,7 +65,6 @@ void XShapeGrad::MakeGrad(XTensor * node, bool isEfficient)
     else if (operID == SHAPE_UNSQUEEZE)
         GradUnsqueeze(node, isEfficient);
     else{
-        PrintCallStack();
         ShowNTErrors("TODO!");
     }
 }
@@ -139,7 +138,9 @@ void XShapeGrad::GradGather(XTensor * node, bool isEfficient)
         XNoder::MakeGrad(input);
 
         XTensor * tmp = NewTensorBufV2(input, input->devID, input->mem);
+        tmp->SetZeroAll();
         _SpreadForGather(tmp, node->grad, index);
+        
         _SumMe(input->grad, tmp);
 
         DelTensorBuf(tmp);

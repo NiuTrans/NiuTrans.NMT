@@ -123,7 +123,7 @@ void _CudaSum(const XTensor * a, const XTensor * b, XTensor * c, DTYPE beta)
 
             KernelADD << <blocks, threads >> >((__half *)a->data, (__half *)b->data, (__half *)c->data, a->unitNum, beta1);
 #else
-            ShowNTErrors("-DUSE_FP16!");
+            ShowNTErrors("Recompile the code with HALF_PRECISION!");
 #endif
         }
         else if (a->dataType == X_INT &&

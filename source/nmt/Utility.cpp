@@ -77,16 +77,16 @@ Config::Config(int argc, const char** argv)
     LoadParamBool(argsNum, args, "prenorm", &preNorm, true);
 
     // TODO: refactor the parameters type to support weight sharing during training
-    LoadParamBool(argsNum, args, "shareemb", &shareAllEmbeddings, false);
-    LoadParamBool(argsNum, args, "sharedec", &shareDecInputOutputWeight, false);
-    LoadParamString(argsNum, args, "model", modelFN, "model.bin");
+    LoadParamInt(argsNum, args, "shareemb", &shareAllEmbeddings, 0);
+    LoadParamInt(argsNum, args, "sharedec", &shareDecInputOutputWeight, 0);
+    LoadParamString(argsNum, args, "model", modelFN, "");
     LoadParamString(argsNum, args, "srcvocab", srcVocabFN, "vocab.src");
     LoadParamString(argsNum, args, "tgtvocab", tgtVocabFN, "vocab.tgt");
 
     /* options for training */
     LoadParamString(argsNum, args, "train", trainFN, "");
     LoadParamString(argsNum, args, "valid", validFN, "");
-    LoadParamInt(argsNum, args, "dev", &devID, -1);
+    LoadParamInt(argsNum, args, "dev", &devID, 0);
     LoadParamInt(argsNum, args, "wbatch", &wBatchSize, 4096);
     LoadParamInt(argsNum, args, "sbatch", &sBatchSize, 8);
     isTraining = (strcmp(trainFN, "") == 0) ? false : true;
@@ -104,13 +104,12 @@ Config::Config(int argc, const char** argv)
     LoadParamBool(argc, args, "adam", &useAdam, true);
     LoadParamFloat(argc, args, "adambeta1", &adamBeta1, 0.9F);
     LoadParamFloat(argc, args, "adambeta2", &adamBeta2, 0.98F);
-    LoadParamFloat(argc, args, "adamdelta", &adamDelta, 1e-8F);
+    LoadParamFloat(argc, args, "adamdelta", &adamDelta, 1e-9F);
     LoadParamBool(argc, args, "shuffled", &isShuffled, true);
     LoadParamFloat(argc, args, "labelsmoothing", &labelSmoothingP, 0.1);
-    LoadParamInt(argc, args, "nstepcheckpoint", &nStepCheckpoint, 1);
-    LoadParamBool(argc, args, "epochcheckpoint", &useEpochCheckpoint, false);
+    LoadParamInt(argc, args, "nstepcheckpoint", &nStepCheckpoint, -1);
+    LoadParamBool(argc, args, "epochcheckpoint", &useEpochCheckpoint, true);
     LoadParamInt(argc, args, "updatestep", &updateStep, 1);
-    LoadParamBool(argc, args, "debug", &isDebugged, false);
     LoadParamBool(argc, args, "sorted", &isLenSorted, false);
 
     LoadParamInt(argc, args, "bufsize", &bufSize, 50000);
@@ -118,7 +117,7 @@ Config::Config(int argc, const char** argv)
     LoadParamBool(argc, args, "smallbatch", &isSmallBatch, true);
     LoadParamBool(argc, args, "bigbatch", &isBigBatch, false);
     LoadParamBool(argc, args, "randbatch", &isRandomBatch, false);
-    LoadParamInt(argc, args, "bucketsize", &bucketSize, 50000);
+    LoadParamInt(argc, args, "bucketsize", &bucketSize, wBatchSize * 10);
 
     /* options for translating */
     LoadParamString(argsNum, args, "test", testFN, "");

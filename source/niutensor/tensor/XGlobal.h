@@ -80,7 +80,7 @@ namespace nts {
     if(!(x)) \
     { \
         fprintf(stderr, "[ERROR] calling '%s' (%s line %d): %s\n", #x, __FILENAME__, __LINE__, msg); \
-        exit(-1); \
+        throw; \
     } \
 } \
 
@@ -89,7 +89,7 @@ namespace nts {
     if(!(x)) \
     { \
         fprintf(stderr, "[ERROR] calling '%s' (%s line %d): %s\n", #x, __FILENAME__, __LINE__); \
-        exit(-1); \
+        throw; \
     } \
 } \
 
@@ -97,12 +97,12 @@ namespace nts {
 { \
     { \
         fprintf(stderr, "[ERROR] (%s line %d): %s\n", __FILENAME__, __LINE__, msg); \
-        exit(-1); \
+        throw; \
     } \
 } \
 
 #define MAX_FILE_NAME_LENGTH 1024 * 2
-#define MAX_LINE_LENGTH 1024*1024
+#define MAX_LINE_LENGTH 1024 * 1024
 #define MAX_SENTENCE_LEN 512
 #define X_MILLION 1000000
 #define MAX_INT 2147483647
@@ -143,6 +143,11 @@ extern int verboseLevel;
     fflush(FILEH); \
 } \
 
+#define LOG(...) do {\
+    fprintf(stderr, "[INFO] ");\
+	fprintf(stderr, __VA_ARGS__);\
+	fprintf(stderr, "\n");\
+} while(0)
 #define XPRINT(VERBOSE,FILEH,STR) {if(VERBOSE<=verboseLevel) {fprintf(FILEH,STR);FFLUSH(FILEH);}}
 #define XPRINT1(VERBOSE,FILEH,STR,ARG) {if(VERBOSE<=verboseLevel) {fprintf(FILEH,STR,ARG);FFLUSH(FILEH);}}
 #define XPRINT2(VERBOSE,FILEH,STR,ARG,ARG2) {if(VERBOSE<=verboseLevel) {fprintf(FILEH,STR,ARG,ARG2);FFLUSH(FILEH);}}

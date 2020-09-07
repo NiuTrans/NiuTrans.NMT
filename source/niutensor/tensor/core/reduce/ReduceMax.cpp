@@ -203,7 +203,7 @@ XTensor funcName(const XTensor & input, int dim)                                
     funcOp(&input, &output, dim);                                                                                   \
                                                                                                                     \
     /* tensor connection */                                                                                         \
-    if(input.enableGrad && X_ENABLE_GRAD)                                                                                            \
+    if(input.enableGrad)                                                                                            \
     {                                                                                                               \
         XLink::MakeLink(&input, NULL, &output, REDUCE_REDUCEMAX);                                                   \
         XLink::AddParamToHeadInt(&output, dim);                                                                     \

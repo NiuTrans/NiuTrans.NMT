@@ -300,7 +300,7 @@ void XLink::MakeLink(const XTensor * t1, const XTensor * t2, XTensor * h, int id
     if(h == NULL)
         return;
     
-    if (!t1->enableGrad || !X_ENABLE_GRAD)
+    if (!(t1->enableGrad && X_ENABLE_GRAD))
         return;
 
     TensorList list(2);
@@ -342,6 +342,9 @@ create a hyper edge with a list of tensors and a output tensor
 */
 void XLink::MakeLink(const TensorList * list, XTensor * h, int id)
 {
+    if (!X_ENABLE_GRAD || !h->enableGrad)
+        return;
+
     /* forward */
     XLink &income = h->income;
     income.Reset();
@@ -633,7 +636,9 @@ void XLink::CopyIncoming(const XTensor * reference, XTensor * target)
     ClearIncoming(target);
 
     int tailNum = reference->income.tailNum;
-    TensorList tails(tailNum);
+    if (tailNum <= 0)
+        return;
+    TensorList tails;
     for(int i = 0; i < tailNum; i++){
         XTensor * tail = (XTensor*)reference->income.tails[i];
         tails.Add(tail);

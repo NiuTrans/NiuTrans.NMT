@@ -133,7 +133,7 @@ XTensor ConvertDataType(const XTensor & input, TENSOR_DATA_TYPE dataType)
     _ConvertDataType(&input, &output);
 
     /* tensor connection */
-    if(input.enableGrad && X_ENABLE_GRAD)
+    if(input.enableGrad)
         XLink::MakeLink(&input, NULL, &output, GETANDSET_CONVERTDATATYPE);
 
     return output;
@@ -157,7 +157,7 @@ void ConvertDataType(const XTensor & input, XTensor & output, TENSOR_DATA_TYPE d
     _ConvertDataType(&input, &output);
 
     /* tensor connection */
-    if (input.enableGrad && X_ENABLE_GRAD)
+    if (input.enableGrad)
         XLink::MakeLink(&input, NULL, &output, GETANDSET_CONVERTDATATYPE);
 }
 

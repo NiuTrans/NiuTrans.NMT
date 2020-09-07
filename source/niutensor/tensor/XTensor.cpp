@@ -179,7 +179,7 @@ XTensor::XTensor(const XTensor& reference)
         _CopyValues(&reference, this);
     }
 
-    if (reference.enableGrad && X_ENABLE_GRAD) {
+    if (reference.enableGrad) {
         if (reference.isTmp)
             XLink::Replace(&reference, this);
         else {
@@ -214,7 +214,7 @@ XTensor::XTensor(const XTensor&& reference)
        This is VERY tricky and there might be better solutions :) */
     *reference.dataP = NULL;
 
-    if (reference.enableGrad && X_ENABLE_GRAD) {
+    if (reference.enableGrad) {
         XLink::Replace(&reference, this);
     }
 
@@ -239,11 +239,11 @@ XTensor::~XTensor()
         newTensor->data = data;
         data = NULL;
 
-        if (enableGrad && X_ENABLE_GRAD)
+        if (enableGrad)
             XLink::Replace(this, newTensor);
     }
 
-    if (enableGrad && X_ENABLE_GRAD) {
+    if (enableGrad) {
         XLink::ClearOutgoing(this);
         XLink::ClearIncoming(this);
     }
@@ -347,7 +347,7 @@ XTensor& XTensor::operator= (const XTensor& tensor)
         newTensor->dataHost = dataHost;
         newTensor->signature = tensor.signature;
         
-        if (enableGrad && X_ENABLE_GRAD) {
+        if (enableGrad) {
             XLink::Replace(this, newTensor);
             XLink::ClearOutgoing(this);
             XLink::ClearIncoming(this);
@@ -362,7 +362,7 @@ XTensor& XTensor::operator= (const XTensor& tensor)
         /* NOTE: this might lead to additional data copy by Mac LLVM compilers */
         /* we make an identity transformation here */
         
-        if (enableGrad && X_ENABLE_GRAD) {
+        if (enableGrad) {
             if (outgo.tailNum > 0)
                 XLink::ClearOutgoing(this);
             XLink::ClearIncoming(this);
@@ -372,7 +372,7 @@ XTensor& XTensor::operator= (const XTensor& tensor)
             Resize(tensor.order, tensor.dimSize, tensor.dataType, tensor.denseRatio);
         
         _Identity(&tensor, this);
-        if (enableGrad && X_ENABLE_GRAD) {
+        if (enableGrad) {
             XLink::MakeLink(&tensor, NULL, this, FUNC_IDENTITY);
         }
     }
@@ -408,7 +408,7 @@ XTensor& XTensor::operator= (const XTensor& tensor)
         CheckNTErrors(outgo.tailNum == 0, "The node has outgoing edge to other nodes!");
 
         /* create tensor links for the new tensor */
-        if (enableGrad && X_ENABLE_GRAD) {
+        if (enableGrad) {
             XLink::Copy(&tensor, this);
         }
     }
@@ -432,7 +432,7 @@ XTensor& XTensor::operator= (const XTensor&& tensor)
         newTensor->dataHost = dataHost;
         newTensor->signature = tensor.signature;
         
-        if (enableGrad && X_ENABLE_GRAD) {
+        if (enableGrad) {
             XLink::Replace(this, newTensor);
             XLink::ClearOutgoing(this);
             XLink::ClearIncoming(this);
@@ -460,7 +460,7 @@ XTensor& XTensor::operator= (const XTensor&& tensor)
        This is VERY tricky and there might be better solutions :) */
     *tensor.dataP = NULL;
 
-    if (enableGrad && X_ENABLE_GRAD) {
+    if (enableGrad) {
         XLink::Copy(&tensor, this);
     }
 
@@ -1699,9 +1699,11 @@ void XTensor::Dump(FILE* file, const char* label, const int n, const int beg, co
             for(int i = beg; i < end; i++){
                 DTYPE f = ((DTYPE*)d)[i];
                 if(i == beg)
-                    fprintf(file, "%e", f);
+                    fprintf(file, "\t%e", f);
                 else
-                    fprintf(file, " %e", f);
+                    fprintf(file, "\t%e", f);
+                if (i % 4 == 3)
+                    fprintf(file, "\n");
 
             }
         }
@@ -1710,9 +1712,11 @@ void XTensor::Dump(FILE* file, const char* label, const int n, const int beg, co
             for(int i = beg; i < end; i++){
                 int f = ((int*)d)[i];
                 if(i == beg)
-                    fprintf(file, "%d", f);
+                    fprintf(file, "\t%d", f);
                 else
-                    fprintf(file, " %d", f);
+                    fprintf(file, "\t%d", f);
+                if (i % 4 == 3)
+                    fprintf(file, "\n");
             }
         }
         else if (dataType == X_FLOAT16) {

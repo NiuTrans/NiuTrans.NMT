@@ -1,0 +1,22 @@
+diff a/source/niutensor/tensor/XCall.cpp b/source/niutensor/tensor/XCall.cpp	(rejected hunks)
+@@ -468,13 +468,16 @@
+ XTensor * NewTensorV2(const int myOrder, const int * myDimSize, const TENSOR_DATA_TYPE myDataType,
+                     const float myDenseRatio, const int myDevID, XMem * myMem)
+ {
+-    if(myMem != NULL)
+-        return new XTensor(myOrder, myDimSize, myDataType, myDenseRatio, myDevID, myMem);
++    XTensor* tensor;
++    if (myMem != NULL) {
++        tensor = new XTensor(myOrder, myDimSize, myDataType, myDenseRatio, myDevID, myMem);
++    }
+     else{
+-        XTensor * tensor = new XTensor();
++        tensor = new XTensor();
+         InitTensorV2(tensor, myOrder, myDimSize, myDataType, myDenseRatio, myDevID, myMem);
+-        return tensor;
+     }
++    tensor->SetZeroAll();
++    return tensor;
+ }
+ 
+ /* 

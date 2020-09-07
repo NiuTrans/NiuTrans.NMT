@@ -17,6 +17,8 @@ test_data*
 /tools/nonbreaking_prefixes*
 /tools/*.perl*
 /model/*
+/copy/*
+copy*
 *.sh
 en-de.en.niutensor.temp.input
 fbis.train
@@ -28,3 +30,17 @@ convert_log
 valgrind.log
 train.log
 train.log.2
+tools/Preprocess.py
+init.bin.name.txt
+train.data
+valid.data
+/build
+/out
+/.vs
+/bin
+/pretrained
+pretrained*
+model.ensemble.filepart
+model.5.filepart
+sample/train/iwlst14de-en.train.log
+/OpenBLAS*

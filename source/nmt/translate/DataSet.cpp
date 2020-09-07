@@ -179,7 +179,7 @@ the constructor of DataSet
 void DataSet::Init(const char* dataFile, const char* srcVocabFN, const char* tgtVocabFN)
 {
     fp = new ifstream(dataFile);
-    CheckNTErrors(fp->is_open(), "can not open the test data");
+    CheckNTErrors(fp->is_open(), "Can not open the test data");
     bufferUsed = 0;
 
     CheckNTErrors(strcmp(srcVocabFN, "") != 0, "missing source vocab file");

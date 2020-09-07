@@ -414,7 +414,7 @@ void _CudaSpreadForGather(XTensor * source, XTensor * collection, XTensor * srcI
         __half2 * cData = (__half2*)collection->data;
         KernelSpreadForGather<__half2> << <blocks, threads >> >(sData, cData, sIndex, indexSize, stride);
 #else
-        ShowNTErrors("-DUSE_FP16!");
+        ShowNTErrors("Recompile the code with HALF_PRECISION!");
 #endif
     }
     else {

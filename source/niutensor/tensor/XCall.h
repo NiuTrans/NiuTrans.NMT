@@ -32,9 +32,8 @@ namespace nts { // namespace nts(NiuTrans.Tensor)
 
 /* global flag for enabling gradient flows or not */
 extern bool X_ENABLE_GRAD;
-
-#define DISABLE_GRAD X_ENABLE_GRAD=false
 #define ENABLE_GRAD X_ENABLE_GRAD=true
+#define DISABLE_GRAD X_ENABLE_GRAD=false
 
 /* initialize a XTensor V2 */
 void InitTensorV2(XTensor * tensor,

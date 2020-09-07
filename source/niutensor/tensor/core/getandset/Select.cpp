@@ -122,7 +122,7 @@ XTensor Select(const XTensor &a, XTensor &index, int dim)
     _Select(&a, &c, &index, dim);
 
     /* tensor connection */
-    if (a.enableGrad && X_ENABLE_GRAD) {
+    if (a.enableGrad) {
         XLink::MakeLink(&a, &index, &c, GETANDSET_SELECT);
         XLink::AddParamToHeadInt(&c, dim);
     }
@@ -224,7 +224,7 @@ XTensor SelectRange(const XTensor &a, int dim, int low, int high)
     _SelectRange(&a, &c, dim, low, high);
 
     /* tensor connection */
-    if (a.enableGrad && X_ENABLE_GRAD) {
+    if (a.enableGrad) {
         XLink::MakeLink(&a, NULL, &c, GETANDSET_SELECT);
         XLink::AddParamToHeadInt(&c, dim);
         XLink::AddParamToHeadInt(&c, low);

@@ -190,7 +190,6 @@ void XMemCopy(void * t, int devIDT, const void * s, int devIDS, size_t size)
         else if(devIDT < 0 && devIDS >= 0){
             cudaError_t error = cudaMemcpy(t, s, size, cudaMemcpyDeviceToHost);
             if(error != cudaSuccess){
-                print_trace();
                 ShowNTErrors("cudaMemcpy error (cudaMemcpyDeviceToHost)");
             }
         }

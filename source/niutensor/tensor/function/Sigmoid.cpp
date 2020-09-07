@@ -74,7 +74,7 @@ XTensor Sigmoid(const XTensor &x)
     _Sigmoid(&x, &y);
 
     /* tensor connection */
-    if (x.enableGrad && X_ENABLE_GRAD) {
+    if (x.enableGrad) {
         XLink::MakeLink(&x, NULL, &y, FUNC_SIGMOID);
     }
 
@@ -90,7 +90,7 @@ void Sigmoid(const XTensor &x, XTensor &y)
     /* call _Sigmoid function */
     _Sigmoid(&x, &y);
 
-    if (x.enableGrad && X_ENABLE_GRAD) {
+    if (x.enableGrad) {
         /* tensor connection */
         XLink::MakeLink(&x, NULL, &y, FUNC_SIGMOID);
     }

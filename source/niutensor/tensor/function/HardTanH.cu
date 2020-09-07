@@ -79,7 +79,7 @@ void _CudaHardTanH(const XTensor * x, XTensor * y)
 #ifdef HALF_PRECISION
         KernelHardtanhCompute<<<dim3(gridSize[0]), dim3(blockSize[0])>>>((__half *)x->data, (__half *)y->data, x->unitNum);
 #else
-        ShowNTErrors("-DUSE_FP16!");
+        ShowNTErrors("Recompile the code with HALF_PRECISION!");
 #endif
     }
     else {
@@ -160,7 +160,7 @@ void _CudaHardTanHBackward(XTensor * y, XTensor * x,
                                 (half*)x->data,
                                  x->unitNum);
 #else
-        ShowNTErrors("-DUSE_FP16!");
+        ShowNTErrors("Recompile the code with HALF_PRECISION!");
 #endif
     }
     else {

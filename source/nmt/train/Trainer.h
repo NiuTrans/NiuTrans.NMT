@@ -104,9 +104,6 @@ public:
     /* number of batches on which we do model update */
     int updateStep;
 
-    /* indicates whether we intend to debug the net */
-    bool isDebugged;
-
     /* indicates whether the sequence is sorted by length */
     bool isLenSorted;
 

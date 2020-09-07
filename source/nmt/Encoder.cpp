@@ -119,7 +119,7 @@ XTensor AttEncoder::Make(XTensor& input, XTensor* mask, XTensor& maskEncDec, boo
         attnBefore = LayerNorm(x, attLayerNorms[i], preNorm, true, false);
 
         /* self attention */
-        att = selfAtt[i].Make(attnBefore, attnBefore, attnBefore, mask, isTraining, NULL, 0);
+        att = selfAtt[i].Make(attnBefore, attnBefore, attnBefore, mask, isTraining, NULL, SELF_ATT);
 
         /* dropout */
         if (isTraining && dropoutP > 0)
@@ -148,7 +148,63 @@ XTensor AttEncoder::Make(XTensor& input, XTensor* mask, XTensor& maskEncDec, boo
         x = LayerNorm(res, fnnLayerNorms[i], preNorm, false, true);
     }
     if (preNorm)
-        x = encoderLayerNorm->Make(x);
+        return encoderLayerNorm->Make(x);
+
+    return x;
+}
+
+/*
+make the encoding network
+>> input - the input tensor of the encoder
+>> mask - the mask that indicate each position is valid
+>> maskEncDec - no use
+>> isTraining - indicates whether the model is used for training
+<< return - the output tensor of the encoder
+*/
+XTensor AttEncoder::MakeFast(XTensor& input, XTensor* mask, XTensor& maskEncDec, bool isTraining)
+{
+    XTensor x;
+
+    x = embedder.Make(input, false, isTraining);
+
+    /* dropout */
+    if (isTraining && dropoutP > 0)
+        x = Dropout(x, dropoutP);
+
+    for (int i = 0; i < nlayer; i++) {
+        XTensor res;
+
+        res = x;
+
+        /* layer normalization with pre-norm for self-attn */
+        x = attLayerNorms[i].Make(x);
+
+        /* self attention */
+        x = selfAtt[i].Make(x, x, x, mask, isTraining, NULL, SELF_ATT);
+
+        /* dropout */
+        if (isTraining && dropoutP > 0)
+            x = Dropout(x, dropoutP);
+
+        /* residual connection */
+        x = Sum(res, x);
+
+        res = x;
+
+        /* layer normalization with pre-norm for fnn */
+        x = fnnLayerNorms[i].Make(x);
+
+        /* fnn */
+        x = fnns[i].Make(x, isTraining);
+
+        /* dropout */
+        if (isTraining && dropoutP > 0)
+            x = Dropout(x, dropoutP);
+
+        /* residual connection */
+        x = Sum(res, x);
+    }
+    x = encoderLayerNorm->Make(x);
 
     return x;
 }

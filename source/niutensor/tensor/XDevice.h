@@ -64,20 +64,20 @@ public:
     /* size of the memory */
     int memSize;
 
-    /* warp size of an (Navida) GPU */
+    /* warp size of an (Nvidia) GPU */
     int GPUWarpSize;
 
     /* indicates whether the device class has been initialized */
     bool isInitialized;
 
     /* 
-    max grid size (or number of blocks) of an (Navida) GPU 
+    max grid size (or number of blocks) of an (Nvidia) GPU
     NOTE: the grid size is alone with three dimensions (x, y, z)
     */
     int GPUMaxGridSize[3];
 
     /*
-    max block size (or number of threads per block) of an (Navida) GPU 
+    max block size (or number of threads per block) of an (Nvidia) GPU
     NOTE: the block size is alone with three dimensions (x, y, z)
     */
     int GPUMaxBlockSize[3];
@@ -158,6 +158,9 @@ public:
     /* reset cuda flag for more efficient cuda execution (all devices) */
     static
     void SetFastFlagsAllDevices();
+
+    /* delete the default stream for the device (call it before deleting the XDevice) */
+    void DelDeviceStream();
 };
 
 /*
@@ -216,6 +219,10 @@ public:
 
     /* get the device information in string */
     char * GetDevString(int devID);
+
+    /* delete the streams for all devices */
+    static
+    void DelDeviceStream();
 };
 
 /* managing the devices */

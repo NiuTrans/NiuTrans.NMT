@@ -105,6 +105,9 @@ public:
     /* make the encoding network */
     XTensor Make(XTensor& input, XTensor* mask, XTensor& maskEncDec, bool isTraining);
 
+    /* make the encoding network */
+    XTensor MakeFast(XTensor& input, XTensor* mask, XTensor& maskEncDec, bool isTraining);
+
     /* make the encoding network (wrapper) */
     XTensor Make(XTensor& input, XTensor* mask, bool isTraining);
 };

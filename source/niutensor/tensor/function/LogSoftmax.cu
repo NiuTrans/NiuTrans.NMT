@@ -226,7 +226,7 @@ void _CudaLogSoftmaxSumMax(XTensor * x, XTensor * y, int leadDim, XTensor * sum,
                                        ((half*)x->data, maxData, sumData, (half*)y->data, n, m);
         }
 #else
-        ShowNTErrors("-DUSE_FP16!");
+        ShowNTErrors("Recompile the code with HALF_PRECISION!");
 #endif
     }
     else {

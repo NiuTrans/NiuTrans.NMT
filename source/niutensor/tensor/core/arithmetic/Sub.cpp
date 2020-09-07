@@ -109,7 +109,7 @@ XTensor Sub(const XTensor & a, const XTensor & b, DTYPE beta)
             _Sub(&a, &b, &c, beta);
 
             /* tensor connections */
-            if (a.enableGrad && b.enableGrad && X_ENABLE_GRAD) {
+            if (a.enableGrad && b.enableGrad) {
                 XLink::MakeLink(&a, &b, &c, MATH_SUB);
                 XLink::AddParamToHead(&c, beta);
             }
@@ -119,7 +119,7 @@ XTensor Sub(const XTensor & a, const XTensor & b, DTYPE beta)
             _SumDim(&a, &b, &c, n, -beta);
 
             /* tensor connections */
-            if (a.enableGrad && b.enableGrad && X_ENABLE_GRAD) {
+            if (a.enableGrad && b.enableGrad) {
                 XLink::MakeLink(&a, &b, &c, MATH_SUBDIM);
                 XLink::AddParamToHeadInt(&c, n);
                 XLink::AddParamToHead(&c, beta);
@@ -157,7 +157,7 @@ void Sub(const XTensor & a, const XTensor & b, XTensor & c, DTYPE beta)
             /* call _Sub function */
             _Sub(&a, &b, &c, beta);
 
-            if (a.enableGrad && b.enableGrad && X_ENABLE_GRAD) {
+            if (a.enableGrad && b.enableGrad) {
                 /* tensor connections */
                 XLink::MakeLink(&a, &b, &c, MATH_SUB);
                 XLink::AddParamToHead(&c, beta);
@@ -167,7 +167,7 @@ void Sub(const XTensor & a, const XTensor & b, XTensor & c, DTYPE beta)
             /* call _SumDim function to do the SubDim operation */
             _SumDim(&a, &b, &c, n, -beta);
 
-            if (a.enableGrad && b.enableGrad && X_ENABLE_GRAD) {
+            if (a.enableGrad && b.enableGrad) {
                 /* tensor connections */
                 XLink::MakeLink(&a, &b, &c, MATH_SUBDIM);
                 XLink::AddParamToHeadInt(&c, n);

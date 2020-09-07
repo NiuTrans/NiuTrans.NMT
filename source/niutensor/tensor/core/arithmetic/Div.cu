@@ -210,7 +210,7 @@ void _CudaDiv(const XTensor * a, const XTensor * b, XTensor * c, DTYPE alpha, in
                 }
             }
 #else
-            ShowNTErrors("-DUSE_FP16!");
+            ShowNTErrors("Recompile the code with HALF_PRECISION!");
 #endif
         }
         else {

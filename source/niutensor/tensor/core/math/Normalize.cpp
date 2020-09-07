@@ -173,7 +173,7 @@ XTensor Normalize(const XTensor &input, int dim,
     list.Add((XTensor*)&var);
     list.Add((XTensor*)&a);
     list.Add((XTensor*)&b);
-    if (input.enableGrad && X_ENABLE_GRAD) {
+    if (input.enableGrad) {
         XLink::MakeLink(&list, &output, MATH_NORMALIZE);
         XLink::AddParamToHeadInt(&output, dim);
         XLink::AddParamToHead(&output, epsilon);
@@ -210,7 +210,7 @@ void Normalize(const XTensor &input, XTensor &output, int dim,
     /* call _Normalize function */
     _Normalize(&input, &output, dim, &mean, &var, &a, &b, epsilon);
 
-    if (input.enableGrad && X_ENABLE_GRAD) {
+    if (input.enableGrad == true) {
         /* tensor connections */
         TensorList list(5);
         list.Add((XTensor*)&input);

@@ -115,7 +115,7 @@ XTensor Clip(const XTensor & a, DTYPE lower, DTYPE upper)
 	_Clip(&a, &b, lower, upper);
 
 	/* tensor connections */
-	if (a.enableGrad && X_ENABLE_GRAD) {
+	if (a.enableGrad) {
 	    XLink::MakeLink(&a, NULL, &b, MATH_CLIP);
 	    XLink::AddParamToHead(&b, lower);
 	    XLink::AddParamToHead(&b, upper);
@@ -134,7 +134,7 @@ void Clip(const XTensor & a, XTensor & b, DTYPE lower, DTYPE upper)
     _Clip(&a, &b, lower, upper);
 
     /* tensor connections */
-    if (a.enableGrad && X_ENABLE_GRAD) {
+    if (a.enableGrad) {
         XLink::MakeLink(&a, NULL, &b, MATH_CLIP);
         XLink::AddParamToHead(&b, lower);
         XLink::AddParamToHead(&b, upper);

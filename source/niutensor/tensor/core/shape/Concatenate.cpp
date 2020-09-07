@@ -100,7 +100,7 @@ XTensor Concatenate(const TensorList &smalls, int dim)
         _Merge(&smalls, &big, dim);
                 
         /* tensor connection */
-        if (tensor->enableGrad && X_ENABLE_GRAD) {
+        if (tensor->enableGrad) {
             XLink::MakeLink(&smalls, &big, SHAPE_MERGE);
             XLink::AddParamToHeadInt(&big, dim);
         }
@@ -130,7 +130,7 @@ XTensor Concatenate(const TensorList &smalls, int dim)
         _ConcatenateSolely(&smalls, &big, dim);
 
         /* tensor connection */
-        if (tensor->enableGrad && X_ENABLE_GRAD) {
+        if (tensor->enableGrad) {
             XLink::MakeLink(&smalls, &big, SHAPE_CONCATENATE);
             XLink::AddParamToHeadInt(&big, dim);
         }
@@ -234,7 +234,7 @@ void Concatenate(const TensorList & smalls, XTensor & big, int dim)
         _Merge(&smalls, &big, dim);
                 
         /* tensor connection */
-        if (big.enableGrad && X_ENABLE_GRAD) {
+        if (big.enableGrad) {
             XLink::MakeLink(&smalls, &big, SHAPE_MERGE);
             XLink::AddParamToHeadInt(&big, dim);
         }
@@ -244,7 +244,7 @@ void Concatenate(const TensorList & smalls, XTensor & big, int dim)
         _ConcatenateSolely(&smalls, &big, dim);
 
         /* tensor connection */
-        if (big.enableGrad && X_ENABLE_GRAD) {
+        if (big.enableGrad) {
             XLink::MakeLink(&smalls, &big, SHAPE_CONCATENATE);
             XLink::AddParamToHeadInt(&big, dim);    
         }
@@ -314,7 +314,7 @@ XTensor Concatenate(const XTensor &smallA, const XTensor &smallB, int dim)
         _Merge(&smalls, &big, dim);
                 
         /* tensor connection */
-        if (tensor->enableGrad && X_ENABLE_GRAD) {
+        if (tensor->enableGrad) {
             XLink::MakeLink(&smalls, &big, SHAPE_MERGE);
             XLink::AddParamToHeadInt(&big, dim);
         }
@@ -344,7 +344,7 @@ XTensor Concatenate(const XTensor &smallA, const XTensor &smallB, int dim)
         _ConcatenateSolely(&smalls, &big, dim);
 
         /* tensor connection */
-        if (tensor->enableGrad && X_ENABLE_GRAD) {
+        if (tensor->enableGrad) {
             XLink::MakeLink(&smalls, &big, SHAPE_CONCATENATE);
             XLink::AddParamToHeadInt(&big, dim);
         }

@@ -155,7 +155,7 @@ XTensor Unsqueeze(const XTensor &a, int dim, int dSize)
     _Unsqueeze(&a, &b, dim, dSize);
 
     /* tensor connections */
-    if (a.enableGrad && X_ENABLE_GRAD) {
+    if (a.enableGrad) {
         XLink::MakeLink(&a, NULL, &b, SHAPE_UNSQUEEZE);
         XLink::AddParamToHeadInt(&b, dim);
         XLink::AddParamToHeadInt(&b, dSize);
@@ -202,7 +202,7 @@ void Unsqueeze(const XTensor &a, XTensor &b, int dim, int dSize)
     /* call _Unsqueeze function */
     _Unsqueeze(&a, &b, dim, dSize);
 
-    if (a.enableGrad && X_ENABLE_GRAD) {
+    if (a.enableGrad) {
         /* tensor connections */
         XLink::MakeLink(&a, NULL, &b, SHAPE_UNSQUEEZE);
         XLink::AddParamToHeadInt(&b, dim);

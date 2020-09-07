@@ -536,7 +536,6 @@ void _SetDataRange(XTensor * tensor, DTYPE lower, DTYPE upper, DTYPE step)
     else {
         ShowNTErrors("TODO! Unsupported datatype!")
     }
-
 }
 
 /* 

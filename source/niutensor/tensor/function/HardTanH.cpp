@@ -79,7 +79,7 @@ XTensor HardTanH(const XTensor &x)
     _HardTanH(&x, &y);
 
     /* tensor connection */
-    if (x.enableGrad && X_ENABLE_GRAD) {
+    if (x.enableGrad) {
         XLink::MakeLink(&x, NULL, &y, FUNC_HARDTANH);
     }
 
@@ -95,7 +95,7 @@ void HardTanH(const XTensor &x, XTensor &y)
     /* call _HardTanH function */
     _HardTanH(&x, &y);
 
-    if (x.enableGrad && X_ENABLE_GRAD) {
+    if (x.enableGrad) {
         /* tensor connection */
         XLink::MakeLink(&x, NULL, &y, FUNC_HARDTANH);
     }

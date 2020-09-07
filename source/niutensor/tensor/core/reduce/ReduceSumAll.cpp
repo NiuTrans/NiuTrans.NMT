@@ -80,6 +80,7 @@ void _ReduceSumAll(const XTensor * source, DTYPE * value)
     _ReduceSumAll(source, target);
     *value = target->Get0D();
 
+    delete[] dimSize;
     DelTensorBuf(target);
 }
 
@@ -99,7 +100,7 @@ XTensor ReduceSumAll(const XTensor & source)
     _ReduceSumAll(&source, &target);
 
     /* tensor connection */
-    if (source.enableGrad && X_ENABLE_GRAD) {
+    if (source.enableGrad) {
         XLink::MakeLink(&source, NULL, &target, REDUCE_REDUCESUMALL);
     }
 

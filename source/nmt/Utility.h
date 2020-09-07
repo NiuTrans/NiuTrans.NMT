@@ -131,10 +131,10 @@ public:
     bool isMT;
 
     /* indicates whether share encoder decoder embeddings */
-    bool shareAllEmbeddings;
+    int shareAllEmbeddings;
 
     /* indicates whether share decoder embeddings and output weights */
-    bool shareDecInputOutputWeight;
+    int shareDecInputOutputWeight;
 
     /* indicates whether the model is running with FP16 data type */
     bool useFP16;
@@ -200,9 +200,6 @@ public:
 
     /* number of batches on which we do model update */
     int updateStep;
-
-    /* indicates whether we intend to debug the net */
-    bool isDebugged;
 
     /* indicates whether the sequence is sorted by length */
     bool isLenSorted;

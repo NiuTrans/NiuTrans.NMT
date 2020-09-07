@@ -171,7 +171,7 @@ XTensor ScaleAndShift(const XTensor &a, DTYPE scale, DTYPE shift)
         _ScaleAndShift(&a, &b, scale, shift);
 
         /* tensor connections */
-        if (a.enableGrad && X_ENABLE_GRAD) {
+        if (a.enableGrad) {
             XLink::MakeLink(&a, NULL, &b, MATH_SCALEANDSHIFT);
             XLink::AddParamToHead(&b, scale);
             XLink::AddParamToHead(&b, shift);
@@ -207,7 +207,7 @@ void ScaleAndShift(const XTensor & a, XTensor & b, DTYPE scale, DTYPE shift)
         /* call _ScaleAndShift function */
         _ScaleAndShift(&a, &b, scale, shift);
 
-        if (a.enableGrad && X_ENABLE_GRAD) {
+        if (a.enableGrad) {
             /* tensor connections */
             XLink::MakeLink(&a, NULL, &b, MATH_SCALEANDSHIFT);
             XLink::AddParamToHead(&b, scale);
