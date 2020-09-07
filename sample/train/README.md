@@ -57,7 +57,7 @@ Expected BLEU score (lenalpha=0.6, maxlenalpha=1.2):
 | Single model    | 33.94 (beam=4)  | 33.33    |
 | Ensemble model  | 34.69 (beam=4)  | 34.07    |
 
-We provide pretrained models using the default configurations:
+We provide models trained with the default configurations:
 
 [Google Drive](https://drive.google.com/file/d/1A5Z40lAWCxO54zJ2VFHQLT_AaI00J6bj) (Single model)
 

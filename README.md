@@ -65,16 +65,16 @@ NiuTrans.NMT supports acceleration with MKL, OpenBLAS or CUDA.
 
 Please note that you can only select at most **one** of MKL or OpenBLAS.
 
-Use MKL (optional)
+*Use MKL (optional)*
 
 Add ``-DUSE_MKL=ON`` and ``-DINTEL_ROOT=$MKL_PATH`` to the CMake command, where ``$MKL_PATH`` is the path of MKL.
 
-Use OpenBLAS (optional)
+*Use OpenBLAS (optional)*
 
 Add ``-DUSE_OPENBLAS=ON`` and ``-DOPENBLAS_ROOT=$OPENBLAS_PATH`` to the CMake command, where ``$OPENBLAS_PATH`` is the path of OpenBLAS.
 
 
-Use CUDA (required for training)
+*Use CUDA (required for training)*
 
 Add ``-DUSE_CUDA=ON`` and ``-DCUDA_TOOLKIT_ROOT_DIR=$CUDA_PATH`` to the CMake command, where ``$CUDA_PATH`` is the path of CUDA toolkit.
 
@@ -86,7 +86,7 @@ You can also add ``-DUSE_FP16=ON`` to the CMake command to get half precision su
 #### Congfiguration Example
 
 You can build the project with different options using .
-We provide [several examples](./compile/README.md) to build the project with different options. 
+We provide [several examples](./sample/compile/README.md) to build the project with different options. 
 
 #### Step 3: Compile the Project
 
