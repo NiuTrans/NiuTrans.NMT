@@ -296,7 +296,7 @@ Here are the papers related to this project:
 
 This project is maintained by a joint team from NiuTrans Research and NEU NLP Lab. Current team members are
 
-*Chi Hu, Bei Li, Yinqiao Li, Ye Lin, Yanyang Li, Quan Du, Tong Xiao and Jingbo Zhu*
+*Chi Hu, Bei Li, Yinqiao Li, Ye Lin, Quan Du, Tong Xiao and Jingbo Zhu*
 
 Please contact niutrans@mail.neu.edu.cn if you have any questions.
 
