@@ -2,14 +2,14 @@
 
 ## IWSLT'14 German to English (Transformer)
 
-The following instructions can be used to train a Transformer model on the [IWSLT'14 German to English dataset](http://workshop2014.iwslt.org/downloads/proceeding.pdf).
+The following instructions can train a Transformer model on the [IWSLT'14 German to English dataset](http://workshop2014.iwslt.org/downloads/proceeding.pdf).
 
-Step 1: Download and extract the data:
+Step 1: Prepare the training data:
 
-*We provide the bpe code for better reproducibility, the source and target vocabulary are shared with 10,000 merges.*
+*We provide the BPE code for better reproducibility. The source and target vocabulary are shared with 10,000 merges.*
 
 ```bash
-# Download and prepare the data
+# Extract the data
 cd sample/train/
 IWSLT_PATH=iwslt14.tokenized.de-en
 tar -zxvf $IWSLT_PATH.tar.gz
@@ -17,6 +17,12 @@ IWSLT_PATH=sample/train/$IWSLT_PATH
 
 # Binarize the data
 cd ../..
+python3 tools/GetVocab.py \
+  -raw $IWSLT_PATH/bpevocab \
+  -new $IWSLT_PATH/vocab.de
+python3 tools/GetVocab.py \
+  -raw $IWSLT_PATH/bpevocab \
+  -new $IWSLT_PATH/vocab.en
 python3 tools/PrepareParallelData.py \
   -src $IWSLT_PATH/train.de -tgt $IWSLT_PATH/train.en \
   -src_vocab $IWSLT_PATH/vocab.de -tgt_vocab $IWSLT_PATH/vocab.en \
@@ -42,10 +48,10 @@ bin/NiuTrans.NMT \
   -valid $IWSLT_PATH/valid.data
 ```
 
-Step 3: Average the last 10 checkpoints:
+Step 3: Average the last ten checkpoints:
 
 ```bash
-python tools/Ensemble.py -src 'model.bin*' -tgt model.ensemble
+python tools/Ensemble.py -input 'model.bin.*' -output model.ensemble
 ```
 
 It costs about 310s per epoch on a GTX 1080 Ti.
@@ -54,8 +60,8 @@ Expected BLEU score (lenalpha=0.6, maxlenalpha=1.2):
 
 | Model type      | Beam Search     | Greedy Search   |
 | --------------- | --------------- | --------------- |
-| Single model    | 33.94 (beam=4)  | 33.33    |
-| Ensemble model  | 34.69 (beam=4)  | 34.07    |
+| Single model    | 34.05 (beam=4)  | 33.35    |
+| Ensemble model  | 34.48 (beam=4)  | 34.01    |
 
 We provide models trained with the default configurations:
 

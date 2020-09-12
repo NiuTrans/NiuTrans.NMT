@@ -1,13 +1,14 @@
-# Translating with pretrained models
+# Translating with pre-trained models
 
 ## IWSLT'14 En-De Models
 
-The following instructions can be used to translate with a pretrained Transformer model.
+The following instructions can be used to translate with a pre-trained Transformer model.
 
 You can evaluate models trained in the [training example](../sample/train) by two steps.
 
 Step 1: Translate the IWSLT14 De-En test set (tokenized) on the GPU:
 ```
+IWSLT_PATH=sample/train/iwslt14.tokenized.de-en
 bin/NiuTrans.NMT \
 -dev 0 \
  -test $IWSLT_PATH/test.de \
@@ -27,7 +28,7 @@ Step 2: Check the translation with [multi-bleu](https://github.com/moses-smt/mos
 perl multi-bleu.perl $IWSLT_PATH/test.en < output
 ```
 
-It takes about 15s for translating test.de (6,750 sentences) on a GTX 1080 Ti with greedy search.
+It takes about 15s for translating test.de (6,750 sentences) on a GTX 1080 Ti with a greedy search.
 
 ## WNGT 2020 Models
 
@@ -39,7 +40,7 @@ The WNGT 2020 efficiency task constrains systems to translate 1 million sentence
 
 - For GPUs, the performance was measured on an [AWS g4dn.xlarge instance](https://aws.amazon.com/cn/ec2/instance-types/g4/) with an NVIDIA T4 GPU and 16 GB memory. We submitted four systems (9-1, 18-1, 35-1, 35-6) running with FP16.
 
-We list the results of all submissions, see [the official results](https://docs.google.com/spreadsheets/d/1M82S5wPSIM543Gh20d71Zs0FNHJQ3JdiJzDECiYJNlE/edit#gid=0) for more details.
+We list the results of all submissions. See [the official results](https://docs.google.com/spreadsheets/d/1M82S5wPSIM543Gh20d71Zs0FNHJQ3JdiJzDECiYJNlE/edit#gid=0) for more details.
 
 | Model type | Time (s) | File size (MiB) | BLEU | Word per second |
 | ---------- | -------- | --------------- | ---- | --------------- |

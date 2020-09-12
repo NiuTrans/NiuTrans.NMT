@@ -7,8 +7,8 @@ import sys
 import argparse
 
 parser = argparse.ArgumentParser(description='prepare parallel data for nmt training')
-parser.add_argument('-src', help='source language vocabulary file', type=str, default='')
-parser.add_argument('-tgt', help='target language vocabulary file', type=str, default='')
+parser.add_argument('-raw', help='Path of the BPE vocabulary', type=str, default='')
+parser.add_argument('-new', help='Path of the NiuTrans.NMT vocabulary to be saved', type=str, default='')
 args = parser.parse_args()
 
 # User defined words
@@ -17,8 +17,8 @@ SOS=2
 EOS=2
 UNK=3
 
-with open(args.src, "r", encoding="utf8") as fi:
-    with open(args.tgt, "w", encoding="utf8") as fo:
+with open(args.raw, "r", encoding="utf8") as fi:
+    with open(args.new, "w", encoding="utf8") as fo:
 
         all_lines = fi.readlines()
         vocab_size = len(all_lines) + UNK + 1

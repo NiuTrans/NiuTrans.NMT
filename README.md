@@ -1,12 +1,13 @@
 # NiuTrans.NMT
 
+- [NiuTrans.NMT](#niutransnmt)
   - [Features](#features)
   - [Installation](#installation)
     - [Requirements](#requirements)
     - [Build from Source](#build-from-source)
-      - [Compile on Linux](#compile-on-linux)
-      - [Compile on Windows](#compile-on-windows)
-      - [Compilation Example](#compilation-example)
+      - [Congfigure with CMake](#congfigure-with-cmake)
+      - [Congfiguration Example](#congfiguration-example)
+      - [Compile on Different Systems](#compile-on-different-systems)
   - [Usage](#usage)
     - [Training](#training)
       - [Commands](#commands)
@@ -31,72 +32,71 @@ NiuTrans.NMT is a lightweight and efficient Transformer-based neural machine tra
 ## Installation
 
 ### Requirements
-OS: Linux or Windows
+* OS: Linux or Windows
 
-[GCC/G++](https://gcc.gnu.org/) >=4.8.4 (on Linux)
+* [GCC/G++](https://gcc.gnu.org/) >=4.8.4 (on Linux)
 
-[VC++](https://www.microsoft.com/en-us/download/details.aspx?id=48145) >=2015 (on Windows)
+* [VC++](https://www.microsoft.com/en-us/download/details.aspx?id=48145) >=2015 (on Windows)
 
-[Cmake](https://cmake.org/download/) >= 2.8
+* [CMake](https://cmake.org/download/) >= 2.8
 
-[CUDA](https://developer.nvidia.com/cuda-92-download-archive) >= 9.2 (optional)
+* [CUDA](https://developer.nvidia.com/cuda-92-download-archive) >= 9.2, <= 10.2 (optional)
 
-[MKL](https://software.intel.com/content/www/us/en/develop/tools/math-kernel-library.html) latest version (optional)
+* [MKL](https://software.intel.com/content/www/us/en/develop/tools/math-kernel-library.html) latest version (optional)
 
-[OpenBLAS](https://github.com/xianyi/OpenBLAS) latest version (optional)
+* [OpenBLAS](https://github.com/xianyi/OpenBLAS) latest version (optional)
 
 
 ### Build from Source
 
-#### Step 1: Download the Code
+#### Congfigure with CMake
+
+The default configuration enables compiling for the pure CPU version:
 
 ```bash
-git clone https://github.com/NiuTrans/NiuTrans.NMT.git
+git clone http://47.105.50.196/huchi/nmt.git
+git clone http://47.105.50.196/NiuTrans/NiuTrans.Tensor.git --branch liyinqiao
+mv NiuTrans.Tensor/source nmt/source/niutensor
+rm nmt/source/niutensor/Main.cpp
+rm -rf nmt/source/niutensor/sample nmt/source/niutensor/tensor/test
 mkdir nmt/build && cd nmt/build
-```
-
-#### Step 2: Configure with Cmake
-
-```bash
 cmake ..
 ```
 
-NiuTrans.NMT supports acceleration with MKL, OpenBLAS or CUDA.
+You can add compilation options to support accelerations with MKL, OpenBLAS, or CUDA.
 
-Please note that you can only select at most **one** of MKL or OpenBLAS.
+*Please note that you can only select at most one of MKL or OpenBLAS.*
 
-*Use MKL (optional)*
+**Use CUDA (required for training)**
+
+Add ``-DUSE_CUDA=ON`` and ``-DCUDA_TOOLKIT_ROOT_DIR=$CUDA_PATH`` to the CMake command, where ``$CUDA_PATH`` is the path of the CUDA toolkit.
+
+You can also add ``-DUSE_FP16=ON`` to the CMake command to get half-precision supported.
+
+**Use MKL (optional)**
 
 Add ``-DUSE_MKL=ON`` and ``-DINTEL_ROOT=$MKL_PATH`` to the CMake command, where ``$MKL_PATH`` is the path of MKL.
 
-*Use OpenBLAS (optional)*
+**Use OpenBLAS (optional)**
 
 Add ``-DUSE_OPENBLAS=ON`` and ``-DOPENBLAS_ROOT=$OPENBLAS_PATH`` to the CMake command, where ``$OPENBLAS_PATH`` is the path of OpenBLAS.
 
 
-*Use CUDA (required for training)*
-
-Add ``-DUSE_CUDA=ON`` and ``-DCUDA_TOOLKIT_ROOT_DIR=$CUDA_PATH`` to the CMake command, where ``$CUDA_PATH`` is the path of CUDA toolkit.
-
-You can also add ``-DUSE_FP16=ON`` to the CMake command to get half precision supported.
-
-
-*Note that half precision requires Pascal or newer architectures on GPUs.*
+*Note that half-precision requires Pascal or newer architectures on GPUs.*
 
 #### Congfiguration Example
 
-You can build the project with different options using .
 We provide [several examples](./sample/compile/README.md) to build the project with different options. 
 
-#### Step 3: Compile the Project
+#### Compile on Different Systems
 
-*Compile on Linux*
+**Compile on Linux**
 
 ```bash
-make -j
+make -j && cd ..
 ```
 
-*Compile on Windows*
+**Compile on Windows**
 
 Add ``-A 64`` to the CMake command.
 
@@ -114,9 +114,21 @@ If it succeeds, you will get an executable file **`NiuTrans.NMT`** in the 'bin' 
 
 *Make sure compiling the program with CUDA because training on CPUs is not supported now.*
 
-Step 1: Binarize the training data.
+Step 1: Prepare the training data.
 
 ```bash
+# Convert the BPE vocabulary
+python3 tools/GetVocab.py \
+  -raw $bpeVocab \
+  -new $niutransVocab
+```
+
+Description:
+* `raw` - Path of the BPE vocabulary.
+* `new` - Path of the NiuTrans.NMT vocabulary to be saved.
+
+```bash
+# Binarize the training data
 python3 tools/PrepareParallelData.py \ 
 -src $srcFile \
 -tgt $tgtFile \
@@ -125,24 +137,13 @@ python3 tools/PrepareParallelData.py \
 -output $trainingFile 
 ```
 
-
-
 Description:
 
 * `src` - Path of the source language data. One sentence per line with tokens separated by spaces or tabs.
 * `tgt` - Path of the target language data. The same format as the source language data.
-* `sv` - Path of the source language vocabulary. Its first line is the vocabulary size, followed by a word and its index in each following line.
+* `sv` - Path of the source language vocabulary. Its first line is the vocabulary size and the first index, followed by a word and its index in each following line.
 * `tv` - Path of the target language vocabulary. The same format as the source language vocabulary.
 * `output` - Path of the training data to be saved. 
-
-You can load a [BPE](https://github.com/rsennrich/subword-nmt) vocabulary by running:
-```bash
-python3 tools/GetVocab.py -src $bpeVocab -tgt $niutransVocab
-```
-
-Description:
-* `src` - Path of the BPE vocabulary.
-* `tgt` - Path of the NiuTrans.NMT vocabulary to be saved.
 
 
 
@@ -151,12 +152,10 @@ Step 2: Train the model
 ```bash
 bin/NiuTrans.NMT \
 -dev $deviceID \
--model $modelPath \
+-model $modelFile \
 -train $trainingData \
 -valid $validData 
 ```
-
-
 
 Description:
 
@@ -224,7 +223,7 @@ Description:
 
 * `model` - Path of the model.
 * `sbatch` - Sentence batch size. Default: 8.
-* `dev` - Device id (-1 for CPUs, and >= 0 for GPUs). Default: -1.
+* `dev` - Device id (-1 for CPUs, and >= 0 for GPUs). Default: 0.
 * `beamsize` - Size of the beam. 1 for the greedy search.
 * `test` - Path of the input file. One sentence per line with tokens separated by spaces.
 * `output` - Path of the output file to be saved. The same format as the input file.
@@ -256,7 +255,7 @@ The following frameworks and models are currently supported:
 
 After training, you can convert the fairseq models and vocabulary with the following steps.
 
-Step 1: Converting parameters of a single fairseq model
+Step 1: Convert parameters of a single fairseq model
 ```bash
 python3 tools/ModelConverter.py -src $src -tgt $tgt
 ```
@@ -266,7 +265,7 @@ Description:
 * `tgt` - Path to save the converted model parameters. All parameters are stored in a binary format.
 * `fp16 (optional)` - Save the parameters with 16-bit data type. Default: disabled.
 
-Step 2: Converting the vocabulary:
+Step 2: Convert the vocabulary:
 ```bash
 python3 tools/VocabConverter.py -src $fairseqVocabPath -tgt $newVocabPath
 ```
@@ -279,7 +278,7 @@ Description:
 
 ## A Model Zoo
 
-We provided several pretrained models to test the system.
+We provide several pre-trained models to test the system.
 All models and runnable systems are packaged into docker files so that one can easily reproduce our result.
 
 Refer to [this page](./sample/translate) for more details.
