@@ -6,7 +6,7 @@
     - [Requirements](#requirements)
     - [Build from Source](#build-from-source)
       - [Configure with CMake](#configure-with-cmake)
-      - [Congfiguration Example](#congfiguration-example)
+      - [Configuration Example](#configuration-example)
       - [Compile on Different Systems](#compile-on-different-systems)
   - [Usage](#usage)
     - [Training](#training)
@@ -84,7 +84,7 @@ Add ``-DUSE_OPENBLAS=ON`` and ``-DOPENBLAS_ROOT=$OPENBLAS_PATH`` to the CMake co
 
 *Note that half-precision requires Pascal or newer architectures on GPUs.*
 
-#### Congfiguration Example
+#### Configuration Example
 
 We provide [several examples](./sample/compile/README.md) to build the project with different options. 
 
