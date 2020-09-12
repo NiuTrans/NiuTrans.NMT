@@ -5,7 +5,7 @@
   - [Installation](#installation)
     - [Requirements](#requirements)
     - [Build from Source](#build-from-source)
-      - [Congfigure with CMake](#congfigure-with-cmake)
+      - [Configure with CMake](#configure-with-cmake)
       - [Congfiguration Example](#congfiguration-example)
       - [Compile on Different Systems](#compile-on-different-systems)
   - [Usage](#usage)
@@ -49,7 +49,7 @@ NiuTrans.NMT is a lightweight and efficient Transformer-based neural machine tra
 
 ### Build from Source
 
-#### Congfigure with CMake
+#### Configure with CMake
 
 The default configuration enables compiling for the pure CPU version:
 
