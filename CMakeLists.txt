@@ -202,7 +202,6 @@ if(USE_OPENBLAS)
         link_directories(${OPENBLAS_LIB_DIR})
         include_directories(${OPENBLAS_INCLUDE_DIR})
         set(OPENBLAS_LIB_PATH ${OPENBLAS_LIB_PATH} "${OPENBLAS_LIB_DIR}/libopenblas.a")
-        set(OPENBLAS_LIB_PATH ${OPENBLAS_LIB_PATH} "${OPENBLAS_LIB_DIR}/libopenblas_haswellp-r0.3.10.a")
     endif()
 endif()
 
