@@ -481,7 +481,17 @@ void Model::Dump(const char* fn)
 
     /* part 2: model parameters */
     for (int i = 0; i < params.Size(); i++) {
-        params[i]->BinaryDump(file);
+        if (useFP16 && params[i]->dataType != X_FLOAT16) {
+            XTensor copy, copyFP16;
+            InitTensorOnCPU(&copy, params[i]);
+            copy.enableGrad = false;
+            _CopyValues(params[i], &copy);
+            copyFP16 = ConvertDataType(copy, X_FLOAT16);
+            copyFP16.BinaryDump(file);
+        }
+        else {
+            params[i]->BinaryDump(file);
+        }
     }
 
     fclose(file);
@@ -505,7 +515,7 @@ void Model::Read(FILE* file)
     }
     fprintf(stderr, "params size: %d\n", size);
 
-    /* convert parameters to FP16 */
+    /* convert parameters to FP16 before reading files */
     if (useFP16) {
         LOG("Convert parameters to FP16");
         for (int i = 0; i < params.Size(); i++) {
