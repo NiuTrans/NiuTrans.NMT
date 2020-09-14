@@ -65,6 +65,6 @@ Expected BLEU score (lenalpha=0.6, maxlenalpha=1.2):
 
 We provide models trained with the default configurations:
 
-[Google Drive](https://drive.google.com/file/d/1A5Z40lAWCxO54zJ2VFHQLT_AaI00J6bj) (Single model)
+[Google Drive](https://drive.google.com/drive/folders/10W89cx60Q7A9nGyg5fwLP21Sg53n6NXV?usp=sharing)
 
-[Google Drive](https://drive.google.com/file/d/1NOafDYtlnYJFMop5PEhO6gICSUXN9hy9) (Ensemble model)
+[Baidu Cloud](https://pan.baidu.com/s/1LbkV8kuaDWNunVR2jwOhRg) (password: bdwp)
