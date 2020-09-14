@@ -322,7 +322,7 @@ void Trainer::Validate(const char* fn, const char* ofn, Model* model)
                                                 sBatchSize, 0, model->devID);
         wc = info[0];
         ws = info[1];
-        CheckNTErrors(batchEnc.order == 2, "wrong tensor order of the sequence batch");
+        CheckNTErrors(batchEnc.order == 2, "Wrong tensor order of the sequence batch");
 
         /* make the network */
         if (model->isLM)
@@ -363,7 +363,6 @@ make a checkpoint
 void Trainer::MakeCheckpoint(Model* model, const char* validFN, 
                              const char* modelFN, const char* label, int id)
 {
-    //DISABLE_GRAD;
     LOG("make a checkpoint");
     char* fn = new char[MAX_LINE_LENGTH];
 
@@ -386,7 +385,6 @@ void Trainer::MakeCheckpoint(Model* model, const char* validFN,
         validator.Validate(validFN, fn2, model);
     }
     delete[] fn2;
-    //ENABLE_GRAD;
 }
 
 /*

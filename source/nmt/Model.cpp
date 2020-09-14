@@ -140,10 +140,10 @@ void Model::ShowModelConfig(Config& config)
 
 /*
 make the encoding network
->> input - input tensor
->> mask - the mask for positions that are/not involved in computation
+>> input - input tensor, (batchSize, srcLen)
+>> mask - the mask for encoder self-attention, (headNum, batchSize, srcLen, srcLen)
 >> isTraining - indicates whether we are training the model
-<< return - encoding result
+<< return - encoding result, (batchSize, srcLen, hiddenDim)
 */
 XTensor Model::MakeEncoder(XTensor& input, XTensor* mask, bool isTraining)
 {
@@ -154,13 +154,12 @@ XTensor Model::MakeEncoder(XTensor& input, XTensor* mask, bool isTraining)
 
 /*
 make the decoding network
->> inputDec - input tensor of the decoder
->> outputEnc - output tensor of the encoder
->> output - output tensor (distribution)
->> mask - mask for positions that are/not involved in computation
->> maskEncDec - mask for the encoder-decoder attention
+>> inputDec - input tensor of the decoder, (batchSize, tgtLen)
+>> outputEnc - output tensor of the encoder, (batchSize, srcLen, hiddenDim)
+>> mask - mask for decoder self-attention, (headNum, batchSize, tgtLen, tgtLen)
+>> maskEncDec - mask for the encoder-decoder attention, (headNum, batchSize, tgtLen, srcLen)
 >> isTraining - indicates whether we are training the model
-<< return - encoding result
+<< return - decoding result, (batchSize, tgtLen, hiddenDim)
 */
 XTensor Model::MakeDecoder(XTensor& inputDec, XTensor& outputEnc,
     XTensor* mask, XTensor& maskEncDec, bool isTraining)
@@ -204,15 +203,15 @@ void Model::MakeLM(XTensor& input, XTensor& output, XTensor& padding, bool isTra
 
 /*
 make the network for machine translation (with the output softmax layer)
->> inputEnc - input tensor of the encoder
->> inputDec - input tensor of the decoder
->> output - output tensor (distribution)
->> paddingEnc - padding of the sequences (on the encoder side)
->> paddingDec - padding of the sequences (on the decoder side)
+>> inputEnc - input tensor of the encoder, (batchSize, srcLen)
+>> inputDec - input tensor of the decoder, (batchSize, tgtLen)
+>> output - output tensor (distribution), (batchSize, tgtLen, hiddenDim)
+>> paddingEnc - padding of the sequences (on the encoder side), (batchSize, srcLen)
+>> paddingDec - padding of the sequences (on the decoder side), (batchSize, tgtLen)
 >> isTraining - indicates whether the model is for training
 */
 void Model::MakeMT(XTensor& inputEnc, XTensor& inputDec, XTensor& output,
-    XTensor& paddingEnc, XTensor& paddingDec, bool isTraining)
+                   XTensor& paddingEnc, XTensor& paddingDec, bool isTraining)
 {
     XTensor encoding;
     XTensor decoding;
@@ -221,15 +220,11 @@ void Model::MakeMT(XTensor& inputEnc, XTensor& inputDec, XTensor& output,
     XTensor maskDec;
     XTensor maskEncDec;
 
-    //DISABLE_GRAD;
-
     /* encoder mask */
     MakeMTMaskEnc(paddingEnc, maskEnc);
 
     /* decoder mask */
     MakeMTMaskDec(paddingEnc, paddingDec, maskDec, maskEncDec);
-
-    //ENABLE_GRAD;
 
     encoding = MakeEncoder(inputEnc, &maskEnc, isTraining);
 
@@ -249,8 +244,8 @@ make the mask for training MT models
 >> maksEncDec - mask of the decoder enc-dec attention
 */
 void Model::MakeMTMask(XTensor& inputEnc, XTensor& inputDec,
-    XTensor& paddingEnc, XTensor& paddingDec,
-    XTensor& maskEnc, XTensor& maskDec, XTensor& maskEncDec)
+                       XTensor& paddingEnc, XTensor& paddingDec,
+                       XTensor& maskEnc, XTensor& maskDec, XTensor& maskEncDec)
 {
     int len = inputDec.GetDim(inputDec.order - 1);
     int* dims = new int[inputDec.order + 2];
@@ -318,9 +313,8 @@ void Model::MakeMTMask(XTensor& inputEnc, XTensor& inputDec,
 
 /*
 make the mask of the encoder
->> inputEnc - input of the encoder
->> paddingEnc - padding of the encoder input
->> maskEnc - mask of the encoder self-attention
+>> paddingEnc - padding of the encoder input, (batchSize, srcLen)
+>> maskEnc - mask of the encoder self-attention, (headNum, batchSize, srcLen, srcLen)
 */
 void Model::MakeMTMaskEnc(XTensor& paddingEnc, XTensor& maskEnc)
 {
@@ -334,12 +328,10 @@ void Model::MakeMTMaskEnc(XTensor& paddingEnc, XTensor& maskEnc)
 
 /*
 make the mask of the decoder
->> inputEnc - input of the encoder
->> inputDec - input of the decoder
->> paddingEnc - padding of the encoder input
->> paddingDec - padding of the decoder input
->> maksDec - mask of the decoder self-attention
->> maksEncDec - mask of the decoder enc-dec attention
+>> paddingEnc - padding of the encoder input, (batchSize, srcLen)
+>> paddingDec - padding of the decoder input, (batchSize, tgtLen)
+>> maksDec - mask of the decoder self-attention, (headNum, batchSize, tgtLen, tgtLen)
+>> maksEncDec - mask of the decoder enc-dec attention, (headNum, batchSize, tgtLen, srcLen)
 */
 void Model::MakeMTMaskDec(XTensor& paddingEnc, XTensor& paddingDec,
                           XTensor& maskDec, XTensor& maskEncDec)
@@ -498,7 +490,7 @@ void Model::Dump(const char* fn)
 
     double elapsed = GetClockSec() - startT;
 
-    XPRINT1(0, stderr, "[INFO] model saved (took %.1fs)\n", elapsed);
+    LOG("[INFO] model saved (took %.1fs)", elapsed);
 }
 
 /* read the parameters */
@@ -508,12 +500,12 @@ void Model::Read(FILE* file)
 
     TensorList params;
     GetParams(params);
-    fprintf(stderr, "params count: %d\n", params.Size());
+    LOG("params count: %d", params.Size());
     int size = 0;
     for (int i = 0; i < params.Size(); i++) {
         size += params[i]->unitNum;
     }
-    fprintf(stderr, "params size: %d\n", size);
+    LOG("params size: %d", size);
 
     /* convert parameters to FP16 before reading files */
     if (useFP16) {
@@ -535,17 +527,17 @@ void Model::Read(FILE* file)
     /* share all embeddings */
     if (shareAllEmbeddings == 1) {
         _CopyValues(&encoder->embedder.w, &decoder->embedder.w);
-        XPRINT(0, stderr, "[INFO] sharing encoder decoder embeddings\n");
+        LOG("[INFO] sharing encoder decoder embeddings");
     }
 
     /* share embeddings with output weights */
     if (shareDecInputOutputWeight == 1) {
         _CopyValues(&decoder->embedder.w, &outputLayer->w);
-        XPRINT(0, stderr, "[INFO] sharing decoder embeddings with output weights\n");
+        LOG("[INFO] sharing decoder embeddings with output weights");
     }
 
     double elapsed = GetClockSec() - startT;
-    XPRINT1(0, stderr, "[INFO] model loaded (took %.1fs)\n", elapsed);
+    LOG("[INFO] model loaded (took %.1fs)", elapsed);
 }
 
 }

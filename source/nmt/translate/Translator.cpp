@@ -55,12 +55,12 @@ void Translator::Init(Config& config)
     wordBatch = config.wBatchSize;
 
     if (beamSize > 1) {
-        LOG("Translating with beam search (%d)", beamSize);
+        LOG("translating with beam search (%d)", beamSize);
         seacher = new BeamSearch();
         ((BeamSearch*)seacher)->Init(config);
     }
     else if (beamSize == 1) {
-        LOG("Translating with greedy search");
+        LOG("translating with greedy search");
         seacher = new GreedySearch();
         ((GreedySearch*)seacher)->Init(config);
     }
