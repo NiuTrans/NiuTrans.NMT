@@ -2,5 +2,5 @@
 /build
 /out
 sample/train/iwlst14de-en.train.log
-pretrained.tar.gz
+/models
 /source/niutensor/
