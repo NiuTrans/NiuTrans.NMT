@@ -15,6 +15,7 @@
     - [Translating](#translating)
       - [Commands](#commands-1)
       - [An Example](#an-example-1)
+  - [Low Precision Inference](#low-precision-inference)
   - [Converting Models from Fairseq](#converting-models-from-fairseq)
   - [A Model Zoo](#a-model-zoo)
   - [Papers](#papers)
@@ -238,6 +239,23 @@ Description:
 #### An Example
 
 Refer to [this page for the translating example.](./sample/translate/)
+
+## Low Precision Inference
+
+NiuTrans.NMT supports inference with FP16, you can convert the model to FP16 with our tools:
+
+```bash
+python3 tools/FormatConverter.py \
+  -input $inputModel \
+  -output $outputModel \ 
+  -format $targetFormat
+```
+
+Description:
+
+* `input` - Path of the raw model file.
+* `output` - Path of the new model file.
+* `format` - Target storage format, FP16 (Default) or FP32.
 
 ## Converting Models from Fairseq
 
