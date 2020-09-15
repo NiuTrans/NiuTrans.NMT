@@ -7,7 +7,6 @@ Here is some compilation example for Linux with MKL, OpenBLAS, or CUDA supported
 
 ## Compile with CUDA supported
 
-
 ```bash
 git clone https://github.com/NiuTrans/NiuTrans.NMT.git
 git clone https://github.com/NiuTrans/NiuTensor.git

@@ -1,6 +1,5 @@
 # NiuTrans.NMT
 
-- [NiuTrans.NMT](#niutransnmt)
   - [Features](#features)
   - [Installation](#installation)
     - [Requirements](#requirements)
@@ -41,7 +40,7 @@ NiuTrans.NMT is a lightweight and efficient Transformer-based neural machine tra
 
 * [CMake](https://cmake.org/download/) >= 2.8
 
-* [CUDA](https://developer.nvidia.com/cuda-92-download-archive) >= 9.2, <= 10.2 (optional)
+* [CUDA](https://developer.nvidia.com/cuda-92-download-archive) >= 9.2, <= 10.0 (optional)
 
 * [MKL](https://software.intel.com/content/www/us/en/develop/tools/math-kernel-library.html) latest version (optional)
 
@@ -52,35 +51,38 @@ NiuTrans.NMT is a lightweight and efficient Transformer-based neural machine tra
 
 #### Configure with CMake
 
-The default configuration enables compiling for the pure CPU version:
+The default configuration enables compiling for the **pure CPU** version.
 
 ```bash
+# Download the code
 git clone https://github.com/NiuTrans/NiuTrans.NMT.git
 git clone https://github.com/NiuTrans/NiuTensor.git
+# Merge with NiuTrans.Tensor
 mv NiuTrans.Tensor/source NiuTrans.NMT/source/niutensor
 rm NiuTrans.NMT/source/niutensor/Main.cpp
 rm -rf NiuTrans.NMT/source/niutensor/sample NiuTrans.NMT/source/niutensor/tensor/test
 mkdir NiuTrans.NMT/build && cd NiuTrans.NMT/build
+# Run CMake
 cmake ..
 ```
 
-You can add compilation options to support accelerations with MKL, OpenBLAS, or CUDA.
+You can add compilation options to the CMake command to support accelerations with MKL, OpenBLAS, or CUDA.
 
 *Please note that you can only select at most one of MKL or OpenBLAS.*
 
-**Use CUDA (required for training)**
+* Use CUDA (required for training)
 
-Add ``-DUSE_CUDA=ON`` and ``-DCUDA_TOOLKIT_ROOT_DIR=$CUDA_PATH`` to the CMake command, where ``$CUDA_PATH`` is the path of the CUDA toolkit.
+  Add ``-DUSE_CUDA=ON`` and ``-DCUDA_TOOLKIT_ROOT_DIR=$CUDA_PATH`` to the CMake command, where ``$CUDA_PATH`` is the path of the CUDA toolkit.
 
-You can also add ``-DUSE_FP16=ON`` to the CMake command to get half-precision supported.
+  You can also add ``-DUSE_FP16=ON`` to the CMake command to get half-precision supported.
 
-**Use MKL (optional)**
+* Use MKL (optional)
 
-Add ``-DUSE_MKL=ON`` and ``-DINTEL_ROOT=$MKL_PATH`` to the CMake command, where ``$MKL_PATH`` is the path of MKL.
+  Add ``-DUSE_MKL=ON`` and ``-DINTEL_ROOT=$MKL_PATH`` to the CMake command, where ``$MKL_PATH`` is the path of MKL.
 
-**Use OpenBLAS (optional)**
+* Use OpenBLAS (optional)
 
-Add ``-DUSE_OPENBLAS=ON`` and ``-DOPENBLAS_ROOT=$OPENBLAS_PATH`` to the CMake command, where ``$OPENBLAS_PATH`` is the path of OpenBLAS.
+  Add ``-DUSE_OPENBLAS=ON`` and ``-DOPENBLAS_ROOT=$OPENBLAS_PATH`` to the CMake command, where ``$OPENBLAS_PATH`` is the path of OpenBLAS.
 
 
 *Note that half-precision requires Pascal or newer architectures on GPUs.*
@@ -89,19 +91,15 @@ Add ``-DUSE_OPENBLAS=ON`` and ``-DOPENBLAS_ROOT=$OPENBLAS_PATH`` to the CMake co
 
 We provide [several examples](./sample/compile/README.md) to build the project with different options. 
 
-#### Compile on Different Systems
-
-**Compile on Linux**
+#### Compile on Linux
 
 ```bash
 make -j && cd ..
 ```
 
-**Compile on Windows**
+#### Compile on Windows
 
-Add ``-A 64`` to the CMake command.
-
-It will generate a visual studio project on windows, i.e., ``NiuTrans.NMT.sln`` and you can open & build it with Visual Studio (>= Visual Studio 2015).
+Add ``-A 64`` to the CMake command and it will generate a visual studio project on windows, i.e., ``NiuTrans.NMT.sln`` so you can open & build it with Visual Studio (>= Visual Studio 2015).
 
 If it succeeds, you will get an executable file **`NiuTrans.NMT`** in the 'bin' directory.
 
