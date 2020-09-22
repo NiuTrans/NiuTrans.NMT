@@ -72,6 +72,9 @@ public:
     /* the target vocabulary */
     Vocab tgtVocab;
 
+    /* the maximum length of an input sequence */
+    int maxInputLen;
+
 public:
 
     /* sort the input by length */

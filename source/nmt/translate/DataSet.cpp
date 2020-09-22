@@ -66,8 +66,8 @@ void DataSet::LoadDataToBuffer()
         /* load words and transform them to ids */
         auto indices = SplitToPos(line, tokenDelimiter);
 
-        /* reserve the first 120 words if the input is too long */
-        size_t maxLen = indices.Size() > MAX_WORD_NUM ? MAX_WORD_NUM : indices.Size();
+        /* reserve the first maxInputLen words if the input is too long */
+        size_t maxLen = indices.Size() > maxInputLen ? maxInputLen : indices.Size();
 
         for (size_t i = 0; i < maxLen; i++) {
             auto offset = (i != (indices.Size() - 1)) ?

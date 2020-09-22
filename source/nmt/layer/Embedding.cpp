@@ -50,7 +50,7 @@ void Embedder::InitModel(Config& config, bool isEnc)
     d = config.modelSize;
     padIdx = config.padID;
     eSize = config.embSize;
-    maxLength = config.maxPosLen;
+    maxLength = config.maxLen;
     vSize = (isEnc) ? config.srcVocabSize : config.tgtVocabSize;
 
     InitTensor2D(&w, vSize, eSize, X_FLOAT, devID);

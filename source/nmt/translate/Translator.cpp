@@ -54,6 +54,8 @@ void Translator::Init(Config& config)
     sentBatch = config.sBatchSize;
     wordBatch = config.wBatchSize;
 
+    batchLoader.maxInputLen = config.maxLen;
+
     if (beamSize > 1) {
         LOG("translating with beam search (%d)", beamSize);
         seacher = new BeamSearch();

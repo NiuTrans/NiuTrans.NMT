@@ -72,7 +72,7 @@ void Model::InitModel(Config& config)
         &config.tgtVocabSize, &config.nhead,
         &config.maxRP, &config.shareAllEmbeddings,
         &config.shareDecInputOutputWeight,
-        &config.maxPosLen
+        &config.maxLen
     };
 
     FILE* modelFile = NULL;
@@ -265,9 +265,9 @@ void Model::MakeMTMask(XTensor& inputEnc, XTensor& inputDec,
     dims[inputDec.order + 1] = inputEnc.GetDim(inputEnc.order - 1);
     InitTensor(&maskEncDec, inputDec.order + 2, dims, X_FLOAT, paddingEnc.devID);
 
-    XTensor* maskEncDecTMPEnc = NewTensorBuf(paddingEnc.order + 1, dims + 1,
-        paddingEnc.dataType, paddingEnc.devID);
-    XTensor* maskEncDecTMPDec = NewTensorBuf(maskEncDecTMPEnc, paddingEnc.devID);
+    XTensor* maskEncDecTMPEnc = NewTensorBufV2(paddingEnc.order + 1, dims + 1,
+        paddingEnc.dataType, 1.0F, paddingEnc.devID, paddingEnc.mem);
+    XTensor* maskEncDecTMPDec = NewTensorBufV2(maskEncDecTMPEnc, paddingEnc.devID, paddingEnc.mem);
 
     _Unsqueeze(&paddingEnc, maskEncDecTMPEnc, paddingEnc.order - 1, paddingDec.GetDim(-1));
     _ScaleAndShiftMe(maskEncDecTMPEnc, 1e9F, -1e9F);
@@ -283,14 +283,14 @@ void Model::MakeMTMask(XTensor& inputEnc, XTensor& inputDec,
     dimsPadding[paddingEnc.order - 1] = paddingEnc.GetDim(-1);
     dimsPadding[paddingEnc.order] = paddingEnc.GetDim(-1);
 
-    XTensor* padding2 = NewTensorBuf(paddingEnc.order + 1, dimsPadding, paddingEnc.dataType,
-        paddingEnc.devID);
+    XTensor* padding2 = NewTensorBufV2(paddingEnc.order + 1, dimsPadding, paddingEnc.dataType, 1.0F,
+        paddingEnc.devID, paddingEnc.mem);
 
     for (int i = 0; i < padding2->order; i++)
         dimsPadding[i + 1] = padding2->GetDim(i);
     dimsPadding[0] = nhead;
 
-    XTensor* padding3 = NewTensorBuf(paddingEnc.order + 2, dimsPadding, paddingEnc.dataType, paddingEnc.devID);
+    XTensor* padding3 = NewTensorBufV2(paddingEnc.order + 2, dimsPadding, paddingEnc.dataType, 1.0F, paddingEnc.devID, paddingEnc.mem);
 
     /* mask of the padding */
     _Unsqueeze(&paddingEnc, padding2, paddingEnc.order - 1, paddingEnc.GetDim(-1));

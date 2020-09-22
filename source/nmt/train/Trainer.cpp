@@ -146,6 +146,7 @@ void Trainer::Train(const char* fn, const char* validFN,
 
         while (!batchLoader.IsEmpty())
         {
+
             XNet net;
             net.Clear();
 
@@ -189,12 +190,25 @@ void Trainer::Train(const char* fn, const char* validFN,
 
             float lossBatch = ReduceSumAllValue(lossTensor);
 
+            //LOG("forward");
+            //model->decoder->decoderLayerNorm->b.mem->RebuildIndex();
+            
+            //LOG("-----------");
+
             DTYPE lossLocal = lossBatch / wc;
             bool doUpdate = (!IsNAN(lossLocal) && !IsINF(lossLocal) && lossLocal < 1e3F);
 
+            net.isGradEfficient = true;
+
             if (doUpdate) {
+
                 /* back-propagation */
+                //net.ShowNetwork(stderr, &lossTensor);
+
                 net.Backward(lossTensor);
+
+                //LOG("backward");
+                //model->decoder->decoderLayerNorm->b.mem->ShowMemUsage(stderr);
 
                 gradStep += 1;
                 loss += lossBatch;
@@ -230,12 +244,6 @@ void Trainer::Train(const char* fn, const char* validFN,
             if (++step >= nstep) {
                 isEnd = true;
                 break;
-            }
-
-            if (step == 10) {
-                // LOG("after backward --------");
-                // lossTensor.mem->ShowMemUsage(stderr);
-                // exit(0);
             }
 
             if (step % 100 == 0) {
@@ -428,7 +436,7 @@ void Trainer::Update(Model* model, const float lr)
             _ScaleAndShiftMe(v, (1.0F - adamBeta2), 0);
 
             /* v2 = m / (sqrt(v) + delta) */
-            XTensor* v2 = NewTensorBuf(v, v->devID);
+            XTensor* v2 = NewTensorBufV2(v, v->devID, v->mem);
             _Power(v, v2, 0.5F);
             _ScaleAndShiftMe(v2, 1.0F, d);
             _Div(m, v2, v2);
