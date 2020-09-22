@@ -10,7 +10,7 @@ Here is some compilation example for Linux with MKL, OpenBLAS, or CUDA supported
 ```bash
 git clone https://github.com/NiuTrans/NiuTrans.NMT.git
 git clone https://github.com/NiuTrans/NiuTensor.git
-mv NiuTrans.Tensor/source NiuTrans.NMT/source/niutensor
+mv NiuTensor/source NiuTrans.NMT/source/niutensor
 rm NiuTrans.NMT/source/niutensor/Main.cpp
 rm -rf NiuTrans.NMT/source/niutensor/sample NiuTrans.NMT/source/niutensor/tensor/test
 mkdir NiuTrans.NMT/build && cd NiuTrans.NMT/build
@@ -24,7 +24,7 @@ make -j
 ```bash
 git clone https://github.com/NiuTrans/NiuTrans.NMT.git
 git clone https://github.com/NiuTrans/NiuTensor.git
-mv NiuTrans.Tensor/source NiuTrans.NMT/source/niutensor
+mv NiuTensor/source NiuTrans.NMT/source/niutensor
 rm NiuTrans.NMT/source/niutensor/Main.cpp
 rm -rf NiuTrans.NMT/source/niutensor/sample NiuTrans.NMT/source/niutensor/tensor/test
 mkdir NiuTrans.NMT/build && cd NiuTrans.NMT/build
@@ -38,7 +38,7 @@ make -j
 ```bash
 git clone https://github.com/NiuTrans/NiuTrans.NMT.git
 git clone https://github.com/NiuTrans/NiuTensor.git
-mv NiuTrans.Tensor/source NiuTrans.NMT/source/niutensor
+mv NiuTensor/source NiuTrans.NMT/source/niutensor
 rm NiuTrans.NMT/source/niutensor/Main.cpp
 rm -rf NiuTrans.NMT/source/niutensor/sample NiuTrans.NMT/source/niutensor/tensor/test
 mkdir NiuTrans.NMT/build && cd NiuTrans.NMT/build
@@ -52,7 +52,7 @@ make -j
 ```bash
 git clone https://github.com/NiuTrans/NiuTrans.NMT.git
 git clone https://github.com/NiuTrans/NiuTensor.git
-mv NiuTrans.Tensor/source NiuTrans.NMT/source/niutensor
+mv NiuTensor/source NiuTrans.NMT/source/niutensor
 rm NiuTrans.NMT/source/niutensor/Main.cpp
 rm -rf NiuTrans.NMT/source/niutensor/sample NiuTrans.NMT/source/niutensor/tensor/test
 mkdir NiuTrans.NMT/build && cd NiuTrans.NMT/build

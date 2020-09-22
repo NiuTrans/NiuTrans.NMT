@@ -59,7 +59,7 @@ The default configuration enables compiling for the **pure CPU** version.
 git clone https://github.com/NiuTrans/NiuTrans.NMT.git
 git clone https://github.com/NiuTrans/NiuTensor.git
 # Merge with NiuTrans.Tensor
-mv NiuTrans.Tensor/source NiuTrans.NMT/source/niutensor
+mv NiuTensor/source NiuTrans.NMT/source/niutensor
 rm NiuTrans.NMT/source/niutensor/Main.cpp
 rm -rf NiuTrans.NMT/source/niutensor/sample NiuTrans.NMT/source/niutensor/tensor/test
 mkdir NiuTrans.NMT/build && cd NiuTrans.NMT/build
