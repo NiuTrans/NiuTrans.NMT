@@ -38,7 +38,7 @@ void TrainDataSet::SortByLength() {
     sort(buffer.items, buffer.items + buffer.count,
         [](TrainExample* a, TrainExample* b) {
             return (a->srcSent.Size() + a->tgtSent.Size())
-                 < (b->srcSent.Size() + b->tgtSent.Size());
+                 > (b->srcSent.Size() + b->tgtSent.Size());
         });
 }
 
@@ -190,12 +190,12 @@ UInt64List TrainDataSet::LoadBatch(XTensor* batchEnc, XTensor* paddingEnc,
     float* paddingDecValues = new float[realBatchSize * maxTgtLen];
 
     for (int i = 0; i < realBatchSize * maxSrcLen; i++) {
-        batchEncValues[i] = PAD;
+        batchEncValues[i] = padID;
         paddingEncValues[i] = 1;
     }
     for (int i = 0; i < realBatchSize * maxTgtLen; i++) {
-        batchDecValues[i] = PAD;
-        labelVaues[i] = PAD;
+        batchDecValues[i] = padID;
+        labelVaues[i] = padID;
         paddingDecValues[i] = 1.0F;
     }
 
@@ -223,7 +223,7 @@ UInt64List TrainDataSet::LoadBatch(XTensor* batchEnc, XTensor* paddingEnc,
                 labelVaues[curTgt - 1] = buffer[curIdx + i]->tgtSent[j];
             batchDecValues[curTgt++] = buffer[curIdx + i]->tgtSent[j];
         }
-        labelVaues[curTgt - 1] = EOS;
+        labelVaues[curTgt - 1] = endID;
         while (curSrc < maxSrcLen * (i + 1))
             paddingEncValues[curSrc++] = 0;
         while (curTgt < maxTgtLen * (i + 1))
@@ -348,7 +348,7 @@ void TrainDataSet::BuildBucket()
     SortBucket();
 
     /* sort items in a bucket */
-    idx = 0;
+    /*idx = 0;
     while (idx < buffer.Size()) {
         size_t sentNum = 0;
         int bucketKey = buffer[idx + sentNum]->bucketKey;
@@ -359,7 +359,7 @@ void TrainDataSet::BuildBucket()
         }
         SortInBucket(idx, idx + sentNum);
         idx += sentNum;
-    }
+    }*/
 }
 
 /* de-constructor */

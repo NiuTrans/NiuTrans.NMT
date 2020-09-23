@@ -28,12 +28,6 @@ using namespace std;
 
 namespace nts {
 
-/* user-defined symbols */
-#define PAD 1
-#define SOS 2
-#define EOS 2
-#define UNK 3
-
 /* the vocabulary class */
 struct Vocab
 {

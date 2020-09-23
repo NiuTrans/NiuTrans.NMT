@@ -118,6 +118,9 @@ public:
     /* the padding id */
     int padID;
 
+    /* the unk id */
+    int unkID;
+
     /* start symbol */
     int startID;
 

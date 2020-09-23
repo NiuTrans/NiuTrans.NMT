@@ -55,6 +55,10 @@ void Translator::Init(Config& config)
     wordBatch = config.wBatchSize;
 
     batchLoader.maxInputLen = config.maxLen;
+    batchLoader.unkID = config.unkID;
+    batchLoader.padID = config.padID;
+    batchLoader.startID = config.startID;
+    batchLoader.endID = config.endID;
 
     if (beamSize > 1) {
         LOG("translating with beam search (%d)", beamSize);

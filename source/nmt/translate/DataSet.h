@@ -75,6 +75,18 @@ public:
     /* the maximum length of an input sequence */
     int maxInputLen;
 
+    /* the padding id */
+    int padID;
+
+    /* the unk id */
+    int unkID;
+
+    /* start symbol */
+    int startID;
+
+    /* end symbol */
+    int endID;
+
 public:
 
     /* sort the input by length */

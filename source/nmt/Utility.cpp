@@ -73,6 +73,7 @@ Config::Config(int argc, const char** argv)
     LoadParamInt(argsNum, args, "padid", &padID, 1);
     LoadParamInt(argsNum, args, "startid", &startID, 2);
     LoadParamInt(argsNum, args, "endid", &endID, 2);
+    LoadParamInt(argsNum, args, "unkid", &unkID, 3);
     LoadParamBool(argsNum, args, "rpr", &useRPR, maxRP > 0);
     LoadParamBool(argsNum, args, "prenorm", &preNorm, true);
 

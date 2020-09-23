@@ -79,6 +79,18 @@ public:
     /* indicates whether it is used for training */
     bool isTraining;
 
+    /* the padding id */
+    int padID;
+
+    /* the unk id */
+    int unkID;
+
+    /* start symbol */
+    int startID;
+
+    /* end symbol */
+    int endID;
+
 public:
 
     /* sort the input by length (in descending order) */
