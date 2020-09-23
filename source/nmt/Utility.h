@@ -130,6 +130,9 @@ public:
     /* indicates whether the model uses pre-norm */
     bool preNorm;
 
+    /* add LN to the encoder/decoder output or not */
+    bool finalNorm;
+
     /* indicates whether the model is running for machine translation */
     bool isMT;
 

@@ -92,6 +92,9 @@ public:
     /* the location of layer normalization */
     bool preNorm;
 
+    /* add LN to the encoder output or not */
+    bool finalNorm;
+
 public:
     /* constructor */
     AttEncoder();

@@ -195,11 +195,6 @@ void Trainer::Train(const char* fn, const char* validFN,
 
             float lossBatch = ReduceSumAllValue(lossTensor);
 
-            //LOG("forward");
-            //model->decoder->decoderLayerNorm->b.mem->RebuildIndex();
-            
-            //LOG("-----------");
-
             DTYPE lossLocal = lossBatch / wc;
             bool doUpdate = (!IsNAN(lossLocal) && !IsINF(lossLocal) && lossLocal < 1e3F);
 
@@ -207,13 +202,7 @@ void Trainer::Train(const char* fn, const char* validFN,
 
             if (doUpdate) {
 
-                /* back-propagation */
-                //net.ShowNetwork(stderr, &lossTensor);
-
                 net.Backward(lossTensor);
-
-                //LOG("backward");
-                //model->decoder->decoderLayerNorm->b.mem->ShowMemUsage(stderr);
 
                 gradStep += 1;
                 loss += lossBatch;

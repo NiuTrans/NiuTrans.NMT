@@ -53,7 +53,7 @@ AttDecoder::~AttDecoder()
     delete[] fnnLayerNorms;
     delete[] enDeAtt;
     delete[] enDeAttLayerNorms;
-    if (preNorm)
+    if (finalNorm)
         delete decoderLayerNorm;
 }
 
@@ -70,6 +70,7 @@ void AttDecoder::InitModel(Config& config)
     vSize = config.tgtVocabSize;
     dropoutP = config.dropout;
     preNorm = config.preNorm;
+    finalNorm = config.finalNorm;
 
     CheckNTErrors(nlayer >= 1, "We have one encoding layer at least!");
     CheckNTErrors(vSize > 1, "set vocabulary size by \"-vsizetgt\"");
@@ -86,7 +87,7 @@ void AttDecoder::InitModel(Config& config)
 
     selfAttCache = new Cache[nlayer];
     enDeAttCache = new Cache[nlayer];
-    if (preNorm)
+    if (finalNorm)
         decoderLayerNorm = new LN;
 
     /* initialize the stacked layers */
@@ -100,7 +101,7 @@ void AttDecoder::InitModel(Config& config)
         selfAttCache[i].enable = true;
         enDeAttCache[i].enable = true;
     }
-    if (preNorm)
+    if (finalNorm)
         decoderLayerNorm->InitModel(config);
 }
 
@@ -188,7 +189,7 @@ XTensor AttDecoder::Make(XTensor& inputDec, XTensor& outputEnc, XTensor* mask,
         x = LayerNorm(res, fnnLayerNorms[i], preNorm, false, true);
     }
 
-    if (preNorm)
+    if (finalNorm)
         return decoderLayerNorm->Make(x);
 
     return x;

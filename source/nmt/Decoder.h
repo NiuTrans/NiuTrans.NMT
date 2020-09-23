@@ -83,6 +83,9 @@ public:
     /* the location of layer normalization */
     bool preNorm;
 
+    /* add LN to the decoder output or not */
+    bool finalNorm;
+
 public:
     /* constructor */
     AttDecoder();

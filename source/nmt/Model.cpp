@@ -389,7 +389,7 @@ void Model::GetParams(TensorList& list)
         list.Add(&encoder->fnnLayerNorms[i].w);
         list.Add(&encoder->fnnLayerNorms[i].b);
     }
-    if (encoder->preNorm) {
+    if (encoder->finalNorm) {
         list.Add(&encoder->encoderLayerNorm->w);
         list.Add(&encoder->encoderLayerNorm->b);
     }
@@ -426,7 +426,7 @@ void Model::GetParams(TensorList& list)
             list.Add(&decoder->fnnLayerNorms[i].w);
             list.Add(&decoder->fnnLayerNorms[i].b);
         }
-        if (decoder->preNorm) {
+        if (decoder->finalNorm) {
             list.Add(&decoder->decoderLayerNorm->w);
             list.Add(&decoder->decoderLayerNorm->b);
         }

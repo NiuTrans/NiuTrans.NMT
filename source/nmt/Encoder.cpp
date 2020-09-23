@@ -45,7 +45,7 @@ AttEncoder::~AttEncoder()
     delete[] fnns;
     delete[] attLayerNorms;
     delete[] fnnLayerNorms;
-    if (preNorm)
+    if (finalNorm)
         delete encoderLayerNorm;
 }
 
@@ -62,6 +62,7 @@ void AttEncoder::InitModel(Config& config)
     hSize = config.modelSize;
     vSize = config.srcVocabSize;
     preNorm = config.preNorm;
+    finalNorm = config.finalNorm;
     dropoutP = config.dropout;
 
     CheckNTErrors(nlayer >= 1, "We have one encoding layer at least!");
@@ -75,7 +76,7 @@ void AttEncoder::InitModel(Config& config)
     attLayerNorms = new LN[nlayer];
     fnnLayerNorms = new LN[nlayer];
 
-    if (preNorm)
+    if (finalNorm)
         encoderLayerNorm = new LN;
 
     /* initialize the stacked layers */
@@ -85,7 +86,7 @@ void AttEncoder::InitModel(Config& config)
         attLayerNorms[i].InitModel(config);
         fnnLayerNorms[i].InitModel(config);
     }
-    if (preNorm)
+    if (finalNorm)
         encoderLayerNorm->InitModel(config);
 }
 
@@ -147,7 +148,7 @@ XTensor AttEncoder::Make(XTensor& input, XTensor* mask, XTensor& maskEncDec, boo
         /* layer normalization with post-norm for fnn */
         x = LayerNorm(res, fnnLayerNorms[i], preNorm, false, true);
     }
-    if (preNorm)
+    if (finalNorm)
         return encoderLayerNorm->Make(x);
 
     return x;

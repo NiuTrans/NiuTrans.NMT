@@ -129,7 +129,6 @@ void Translator::Translate(const char* ifn, const char* sfn,
             XTensor score;
             ((BeamSearch*)seacher)->Search(model, batchEnc, paddingEnc, output, score);
         }
-
         for (int i = 0; i < indices.Size() - 1; ++i) {
             Result* res = new Result;
             res->id = int(indices[i]);

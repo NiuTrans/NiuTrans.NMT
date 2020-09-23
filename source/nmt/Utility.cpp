@@ -76,6 +76,7 @@ Config::Config(int argc, const char** argv)
     LoadParamInt(argsNum, args, "unkid", &unkID, 3);
     LoadParamBool(argsNum, args, "rpr", &useRPR, maxRP > 0);
     LoadParamBool(argsNum, args, "prenorm", &preNorm, true);
+    LoadParamBool(argsNum, args, "finalnorm", &finalNorm, true);
 
     // TODO: refactor the parameters type to support weight sharing during training
     LoadParamInt(argsNum, args, "shareemb", &shareAllEmbeddings, 0);
