@@ -104,7 +104,13 @@ public:
     int modelSize;
 
     /* the maximum length in positional embedding */
-    int maxLen;
+    int maxPosition;
+
+    /* the maximum length for the source sequence */
+    int maxSrcLen;
+
+    /* the maximum length for the target sequence */
+    int maxTgtLen;
 
     /* the dimension of fnn hidden layer */
     int fnnHiddenSize;

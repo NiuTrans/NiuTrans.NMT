@@ -72,7 +72,7 @@ void Model::InitModel(Config& config)
         &config.tgtVocabSize, &config.nhead,
         &config.maxRP, &config.shareAllEmbeddings,
         &config.shareDecInputOutputWeight,
-        &config.maxLen
+        &config.maxPosition
     };
 
     FILE* modelFile = NULL;

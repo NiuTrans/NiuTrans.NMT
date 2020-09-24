@@ -54,7 +54,7 @@ void Translator::Init(Config& config)
     sentBatch = config.sBatchSize;
     wordBatch = config.wBatchSize;
 
-    batchLoader.maxInputLen = config.maxLen;
+    batchLoader.maxInputLen = config.maxSrcLen;
     batchLoader.unkID = config.unkID;
     batchLoader.padID = config.padID;
     batchLoader.startID = config.startID;
