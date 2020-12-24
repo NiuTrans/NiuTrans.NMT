@@ -93,10 +93,6 @@ public:
     /* bias for V */
     XTensor biasV;
 
-    XTensor wBig;
-
-    XTensor bBig;
-
     /* RPR emb */
     XTensor RPEmbK;
 
@@ -148,7 +144,7 @@ public:
                              XTensor* mask, bool isTraining, bool isEnc);
 
     /* generate relative position embeddings */
-    XTensor GetRPEmbedding(const int lenQ, const int lenKV, const int maxRelativeLen, const bool isEnc);
+    XTensor GetRPEmbedding(int lenQ, int lenKV, int maxRelativeLen, bool isEnc, bool isTraining);
 
     /* relative position-aware dot-product attention inner calculation */
     XTensor RPDotProduct(XTensor& x, XTensor& y, XTensor& z, const bool is_key);

@@ -74,6 +74,9 @@ public:
     /* layer normalization for encoder-decoder attention */
     LN* enDeAttLayerNorms;
 
+    /* dynamic layer history */
+    LayerHistory* history;
+
     /* layer cache list */
     Cache* selfAttCache;
 
@@ -85,6 +88,9 @@ public:
 
     /* add LN to the decoder output or not */
     bool finalNorm;
+
+    /* reserve history for layers or not */
+    bool useHistory;
 
 public:
     /* constructor */
@@ -99,10 +105,6 @@ public:
     /* make the decoding network */
     XTensor Make(XTensor& inputDec, XTensor& outputEnc, XTensor* mask,
                  XTensor* maskEncDec, int nstep, bool isTraining);
-
-    /* make the decoding network (pre norm) */
-    XTensor MakeFast(XTensor& inputDec, XTensor& outputEnc, XTensor* mask,
-                     XTensor* maskEncDec, int nstep, bool isTraining);
 };
 
 }

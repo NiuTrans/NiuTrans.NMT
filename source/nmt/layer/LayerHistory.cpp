@@ -16,6 +16,7 @@
 
 /*
  * $Created by: Bei Li (libei_neu@outlook.com) 2020-02-03
+ * $Modified by: Chi Hu (huchinlp@gmail.com) 2020-12-10
  */
 
 #include "Embedding.h"
@@ -23,6 +24,7 @@
 #include "LayerHistory.h"
 #include "../Utility.h"
 #include "../../niutensor/tensor/core/CHeader.h"
+#include "../../niutensor/tensor/XName.h"
 
 #define SAFE_DELETE(x) do{ if((x) != NULL){delete (x); (x) = NULL;} } while(false)
 #define SAFE_DELETE_ARRAY(x) do{ if((x) != NULL) {delete [] (x); (x)=NULL;} } while(false)
@@ -34,16 +36,20 @@ namespace nmt
 LayerHistory::LayerHistory()
 {
     d = -1;
+    devID = -1;
     count = -1;
-    weight = NULL;
+    nlayer = -1;
+    weights = NULL;
+    history = NULL;
     layerNorms = NULL;
 }
 
 /* de-constructor */
 LayerHistory::~LayerHistory()
 {
-    history.Clear();
+    delete history;
     delete[] layerNorms;
+    delete[] weights;
 }
 
 /*
@@ -56,7 +62,20 @@ void LayerHistory::InitModel(Config& config)
     d = config.modelSize;
     nlayer = config.nEncLayer;
 
-    InitTensor2D(&weight, nlayer + 1, nlayer + 1, X_FLOAT, devID);
+    /*  the triangle weight matrices for dlcl 
+        layer 0: [1, 0, ..., 0]               
+        layer 1: [0.5, 0.5, ..., 0]           
+        layer 2: [0.33, 0.33, 0.33, ..., 0]   */
+    weights = new XTensor[nlayer + 1];
+    for (int i = 0; i < nlayer + 1; i++) {
+        InitTensor1D(&(weights[i]), i + 1, X_FLOAT, devID);
+        float* data = new float[i + 1];
+        for (int j = 0; j < i + 1; j++) {
+            data[j] = 1.0F / float(i + 1);
+        }
+        weights[i].SetData(data, i + 1);
+        delete[] data;
+    }
 
     layerNorms = new LN[nlayer];
 
@@ -68,59 +87,88 @@ void LayerHistory::InitModel(Config& config)
 
 /*
 the Add operation
->> tensor - the previous layer output. It might be of size B * L * H
-            where B = batch size, L = sequence length,
-            and H = vector size of each position
+>> layer - the previous layer output. It might be of size B * L * H
+           where B = batch size, L = sequence length,
+           and H = vector size of each position
 */
-void LayerHistory::Add(XTensor& tensor)
+void LayerHistory::Add(XTensor& layer)
 {
     /* the embedding is not normed */
     count += 1;
-    if (history.Size() == 0) {
-
-        //sample_ = tensor;
-        history.Add(&tensor);
+    if (history->count == 0) {
+        history->Add(layer);
         return;
     }
-    XTensor ln = layerNorms[count - 2].Make(tensor);
-    history.Add(&ln);
+    layer = layerNorms[count - 2].Make(layer);
+    history->Add(layer);
 }
 
 /*
-generate the weight sum vector of all previous layer output in the history as the layer input
+calculate the weighted sum of previous layers
+the result for the i-th layer is:
+result = sum(layers[0...i] * weight[i][0...i])
+shape of the result: B * L * H
 */
 XTensor LayerHistory::Pop()
 {
-    /* the number of layer output in the history */
-    size_t size = history.Size();
+    TensorList list;
+    for (int i = 0; i < history->count; i++) {
+        list.Add(&(history->list[i]));
+    }
+    XTensor stack;
+    stack = Merge(list, 0);
+    //Stack(list, 0);
 
-    TensorList historyList;
-    for (size_t i = 0; i < size; i++)
-        historyList.Add(history[i]);
+    int dimSize[MAX_TENSOR_DIM_NUM];
+    for (int i = 0; i < stack.order + 1; i++)
+        dimSize[i + 1] = stack.dimSize[i];
+    dimSize[0] = list.Size();
+    dimSize[1] /= dimSize[0];
+    stack = Reshape(stack, stack.order + 1, dimSize);
 
-    /* we need stack the tensor along the first dim*/
-    XTensor stackTensor = Stack(historyList, 0);
+    XTensor res;
+    res = MultiplyDim(stack, weights[list.Size() - 1], 0);
 
-    XTensor interWeight;
-
-    InitTensor2D(&interWeight, 1, weight.dimSize[1], DEFAULT_DTYPE, devID);
-    XTensor layerWeight;
-    InitTensor1D(&layerWeight, size, DEFAULT_DTYPE, devID);
-
-    _SelectRange(&weight, &interWeight, 0, size - 1, size);
-    interWeight.Reshape(interWeight.unitNum);
-    _SelectRange(&interWeight, &layerWeight, 0, 0, size);
-    MultiplyDimMe(stackTensor, layerWeight, 0);
-
-    XTensor result;
-    ReduceSum(stackTensor, result, 0);
-
-    return result;
+    return ReduceSum(res, 0);
 }
 
-void LayerHistory::ClearHistory()
+/* clear the history */
+void LayerHistory::ClearHistory(bool reset)
 {
-    history.Clear();
+    if(history != NULL)
+        delete history;
+    if(reset)
+        history = new History;
+    else
+        history = NULL;
+    count = 0;
+}
+
+/* initialize the history */
+History::History()
+{
+    count = 0;
+}
+
+/* delete the history */
+History::~History()
+{
+    for (int i = 0; i < MAX_LAYER_NUM; i++) {
+        list[i].DestroyData();
+        XLink::ClearOutgoing(&list[i]);
+        XLink::ClearIncoming(&list[i]);
+        if (list[i].grad != NULL)
+            delete list[i].grad;
+    }
+}
+
+/* append a layer to the history */
+void History::Add(XTensor& layer)
+{
+    list[count] = std::move(layer);
+    XLink::ClearOutgoing(&layer);
+    XLink::ClearIncoming(&layer);
+    count++;
 }
 
 }

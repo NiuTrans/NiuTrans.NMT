@@ -28,6 +28,7 @@
 #include "layer/Embedding.h"
 #include "layer/LayerNorm.h"
 #include "../niutensor/network/XNet.h"
+#include "layer/LayerHistory.h"
 
 using namespace nts;
 
@@ -89,11 +90,17 @@ public:
     /* layer normalization for encoder */
     LN* encoderLayerNorm;
 
+    /* dynamic layer history */
+    LayerHistory* history;
+
     /* the location of layer normalization */
     bool preNorm;
 
     /* add LN to the encoder output or not */
     bool finalNorm;
+
+    /* reserve history for layers or not */
+    bool useHistory;
 
 public:
     /* constructor */
@@ -107,9 +114,6 @@ public:
 
     /* make the encoding network */
     XTensor Make(XTensor& input, XTensor* mask, XTensor& maskEncDec, bool isTraining);
-
-    /* make the encoding network */
-    XTensor MakeFast(XTensor& input, XTensor* mask, XTensor& maskEncDec, bool isTraining);
 
     /* make the encoding network (wrapper) */
     XTensor Make(XTensor& input, XTensor* mask, bool isTraining);

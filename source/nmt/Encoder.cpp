@@ -31,11 +31,22 @@ namespace nmt
 /* constructor */
 AttEncoder::AttEncoder()
 {
+    devID = -1;
     selfAtt = NULL;
     fnns = NULL;
     attLayerNorms = NULL;
     fnnLayerNorms = NULL;
     encoderLayerNorm = NULL;
+    useHistory = false;
+    history = NULL;
+    dropoutP = 0.0;
+    eSize = -1;
+    finalNorm = false;
+    hSize = -1;
+    ignored = -1;
+    nlayer = -1;
+    preNorm = false;
+    vSize = -1;
 }
 
 /* de-constructor */
@@ -47,6 +58,8 @@ AttEncoder::~AttEncoder()
     delete[] fnnLayerNorms;
     if (finalNorm)
         delete encoderLayerNorm;
+    if (useHistory)
+        delete history;
 }
 
 /*
@@ -63,13 +76,11 @@ void AttEncoder::InitModel(Config& config)
     vSize = config.srcVocabSize;
     preNorm = config.preNorm;
     finalNorm = config.finalNorm;
+    useHistory = config.useHistory;
     dropoutP = config.dropout;
 
     CheckNTErrors(nlayer >= 1, "We have one encoding layer at least!");
     CheckNTErrors(vSize > 1, "Set vocabulary size by \"-vsize\"");
-
-    /* embedding model */
-    embedder.InitModel(config);
 
     selfAtt = new Attention[nlayer];
     fnns = new FNN[nlayer];
@@ -79,7 +90,11 @@ void AttEncoder::InitModel(Config& config)
     if (finalNorm)
         encoderLayerNorm = new LN;
 
+    if (useHistory)
+        history = new LayerHistory;
+
     /* initialize the stacked layers */
+    embedder.InitModel(config);
     for (int i = 0; i < nlayer; i++) {
         selfAtt[i].InitModel(config);
         fnns[i].InitModel(config);
@@ -88,6 +103,8 @@ void AttEncoder::InitModel(Config& config)
     }
     if (finalNorm)
         encoderLayerNorm->InitModel(config);
+    if (useHistory)
+        history->InitModel(config);
 }
 
 /*
@@ -100,15 +117,25 @@ make the encoding network
 */
 XTensor AttEncoder::Make(XTensor& input, XTensor* mask, XTensor& maskEncDec, bool isTraining)
 {
-    XTensor x;
+    /* clear the history */
+    if (useHistory)
+        history->ClearHistory();
 
+    XTensor x;
     x = embedder.Make(input, false, isTraining);
 
     /* dropout */
     if (isTraining && dropoutP > 0)
-        x = Dropout(x, dropoutP);
+        x = Dropout(x, dropoutP, /*inplace=*/true);
+
+    if (useHistory)
+        history->Add(x);
 
     for (int i = 0; i < nlayer; i++) {
+
+        if (useHistory)
+            x = history->Pop();
+
         XTensor att;
         XTensor fnn;
         XTensor res;
@@ -124,10 +151,10 @@ XTensor AttEncoder::Make(XTensor& input, XTensor* mask, XTensor& maskEncDec, boo
 
         /* dropout */
         if (isTraining && dropoutP > 0)
-            att = Dropout(att, dropoutP);
+            att = Dropout(att, dropoutP, /*inplace=*/true);
 
         /* residual connection */
-        res = Sum(att, x);
+        res = Sum(att, x, /*inplace=*/true);
 
         /* layer normalization with post-norm for self-attn */
         attnAfter = LayerNorm(res, attLayerNorms[i], preNorm, false, true);
@@ -140,72 +167,26 @@ XTensor AttEncoder::Make(XTensor& input, XTensor* mask, XTensor& maskEncDec, boo
 
         /* dropout */
         if (isTraining && dropoutP > 0)
-            fnn = Dropout(fnn, dropoutP);
+            fnn = Dropout(fnn, dropoutP, /*inplace=*/true);
 
         /* residual connection */
-        res = Sum(fnn, attnAfter);
+        res = Sum(fnn, attnAfter, /*inplace=*/true);
 
         /* layer normalization with post-norm for fnn */
         x = LayerNorm(res, fnnLayerNorms[i], preNorm, false, true);
+
+        if (useHistory)
+            history->Add(x);
     }
+
+    if (useHistory)
+        x = history->Pop();
+
+    /*if (useHistory)
+        history->ClearHistory();*/
+
     if (finalNorm)
         return encoderLayerNorm->Make(x);
-
-    return x;
-}
-
-/*
-make the encoding network
->> input - the input tensor of the encoder
->> mask - the mask that indicate each position is valid
->> maskEncDec - no use
->> isTraining - indicates whether the model is used for training
-<< return - the output tensor of the encoder
-*/
-XTensor AttEncoder::MakeFast(XTensor& input, XTensor* mask, XTensor& maskEncDec, bool isTraining)
-{
-    XTensor x;
-
-    x = embedder.Make(input, false, isTraining);
-
-    /* dropout */
-    if (isTraining && dropoutP > 0)
-        x = Dropout(x, dropoutP);
-
-    for (int i = 0; i < nlayer; i++) {
-        XTensor res;
-
-        res = x;
-
-        /* layer normalization with pre-norm for self-attn */
-        x = attLayerNorms[i].Make(x);
-
-        /* self attention */
-        x = selfAtt[i].Make(x, x, x, mask, isTraining, NULL, SELF_ATT);
-
-        /* dropout */
-        if (isTraining && dropoutP > 0)
-            x = Dropout(x, dropoutP);
-
-        /* residual connection */
-        x = Sum(res, x);
-
-        res = x;
-
-        /* layer normalization with pre-norm for fnn */
-        x = fnnLayerNorms[i].Make(x);
-
-        /* fnn */
-        x = fnns[i].Make(x, isTraining);
-
-        /* dropout */
-        if (isTraining && dropoutP > 0)
-            x = Dropout(x, dropoutP);
-
-        /* residual connection */
-        x = Sum(res, x);
-    }
-    x = encoderLayerNorm->Make(x);
 
     return x;
 }

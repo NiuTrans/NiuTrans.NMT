@@ -31,6 +31,7 @@ namespace nmt
 /* constructor */
 AttDecoder::AttDecoder()
 {
+    preNorm = true;
     selfAtt = NULL;
     fnns = NULL;
     selfAttLayerNorms = NULL;
@@ -40,6 +41,8 @@ AttDecoder::AttDecoder()
     decoderLayerNorm = NULL;
     selfAttCache = NULL;
     enDeAttCache = NULL;
+    useHistory = false;
+    history = NULL;
 }
 
 /* de-constructor */
@@ -55,6 +58,8 @@ AttDecoder::~AttDecoder()
     delete[] enDeAttLayerNorms;
     if (finalNorm)
         delete decoderLayerNorm;
+    if (useHistory)
+        delete history;
 }
 
 /*
@@ -71,12 +76,10 @@ void AttDecoder::InitModel(Config& config)
     dropoutP = config.dropout;
     preNorm = config.preNorm;
     finalNorm = config.finalNorm;
+    useHistory = config.useHistory;
 
     CheckNTErrors(nlayer >= 1, "We have one encoding layer at least!");
     CheckNTErrors(vSize > 1, "set vocabulary size by \"-vsizetgt\"");
-
-    /* embedding model */
-    embedder.InitModel(config, false);
 
     selfAtt = new Attention[nlayer];
     fnns = new FNN[nlayer];
@@ -87,10 +90,15 @@ void AttDecoder::InitModel(Config& config)
 
     selfAttCache = new Cache[nlayer];
     enDeAttCache = new Cache[nlayer];
+
     if (finalNorm)
         decoderLayerNorm = new LN;
 
+    if (useHistory)
+        history = new LayerHistory;
+
     /* initialize the stacked layers */
+    embedder.InitModel(config, false);
     for (int i = 0; i < nlayer; i++) {
         selfAtt[i].InitModel(config);
         fnns[i].InitModel(config);
@@ -103,6 +111,8 @@ void AttDecoder::InitModel(Config& config)
     }
     if (finalNorm)
         decoderLayerNorm->InitModel(config);
+    if (useHistory)
+        history->InitModel(config);
 }
 
 /*
@@ -118,15 +128,26 @@ make the decoding network
 XTensor AttDecoder::Make(XTensor& inputDec, XTensor& outputEnc, XTensor* mask,
                          XTensor* maskEncDec, int nstep, bool isTraining)
 {
+    /* clear the history */
+    if (useHistory)
+        history->ClearHistory();
+
     XTensor x;
 
     x = embedder.Make(inputDec, true, isTraining, nstep);
 
     /* dropout */
     if (isTraining && dropoutP > 0)
-        x = Dropout(x, dropoutP);
+        x = Dropout(x, dropoutP, /*inplace=*/true);
+
+    if (useHistory)
+        history->Add(x);
 
     for (int i = 0; i < nlayer; i++) {
+
+        if (useHistory)
+            x = history->Pop();
+
         XTensor att;
         XTensor ende;
         XTensor fnn;
@@ -147,10 +168,10 @@ XTensor AttDecoder::Make(XTensor& inputDec, XTensor& outputEnc, XTensor* mask,
 
         /* dropout */
         if (isTraining && dropoutP > 0)
-            att = Dropout(att, dropoutP);
+            att = Dropout(att, dropoutP, /*inplace=*/true);
 
         /* residual connection */
-        res = Sum(att, x);
+        res = Sum(att, x, /*inplace=*/true);
 
         /* layer normalization with post-norm for self-attention */
         selfAttnAfter = LayerNorm(res, selfAttLayerNorms[i], preNorm, false, true);
@@ -164,10 +185,10 @@ XTensor AttDecoder::Make(XTensor& inputDec, XTensor& outputEnc, XTensor* mask,
 
         /* dropout */
         if (isTraining && dropoutP > 0)
-            ende = Dropout(ende, dropoutP);
+            ende = Dropout(ende, dropoutP, /*inplace=*/true);
 
         /* residual connection */
-        res = Sum(ende, selfAttnAfter);
+        res = Sum(ende, selfAttnAfter, /*inplace=*/true);
 
         /* layer normalization with post-norm for encoder-decoder attention */
         endeAttnAfter = LayerNorm(res, enDeAttLayerNorms[i], preNorm, false, true);
@@ -180,94 +201,26 @@ XTensor AttDecoder::Make(XTensor& inputDec, XTensor& outputEnc, XTensor* mask,
 
         /* dropout */
         if (isTraining && dropoutP > 0)
-            fnn = Dropout(fnn, dropoutP);
+            fnn = Dropout(fnn, dropoutP, /*inplace=*/true);
 
         /* residual connection */
-        res = Sum(fnn, endeAttnAfter);
+        res = Sum(fnn, endeAttnAfter, /*inplace=*/true);
 
         /* layer normalization with post-norm for fnn */
         x = LayerNorm(res, fnnLayerNorms[i], preNorm, false, true);
+
+        if (useHistory)
+            history->Add(x);
     }
+
+    if (useHistory)
+        x = history->Pop();
+
+    /*if (useHistory)
+        history->ClearHistory();*/
 
     if (finalNorm)
         return decoderLayerNorm->Make(x);
-
-    return x;
-}
-
-/*
-make the decoding network
->> inputDec - the input tensor of the decoder
->> outputEnc - the output tensor of the encoder
->> mask - mask that indicates which position is valid
->> maskEncDec - mask for the encoder-decoder attention
->> nstep - the current length of the decoder input
->> isTraining - indicates whether the model is used for training
-<< return - the output tensor of the decoder
-*/
-XTensor AttDecoder::MakeFast(XTensor& inputDec, XTensor& outputEnc, XTensor* mask,
-                             XTensor* maskEncDec, int nstep, bool isTraining)
-{
-    XTensor x;
-
-    x = embedder.Make(inputDec, true, isTraining, nstep);
-
-    /* dropout */
-    if (isTraining && dropoutP > 0)
-        x = Dropout(x, dropoutP);
-
-    for (int i = 0; i < nlayer; i++) {
-        XTensor res;
-
-        res = x;
-
-        /* layer normalization with pre-norm for self-attn */
-        x = selfAttLayerNorms[i].Make(x);
-
-        /******************/
-        /* self attention */
-        x = selfAtt[i].Make(x, x, x, mask, isTraining, &selfAttCache[i], SELF_ATT);
-
-        /* dropout */
-        if (isTraining && dropoutP > 0)
-            x = Dropout(x, dropoutP);
-
-        /* residual connection */
-        x = Sum(res, x);
-
-        res = x;
-
-        /* layer normalization with pre-norm for encoder-decoder attention */
-        x = enDeAttLayerNorms[i].Make(x);
-
-        /* encoder-decoder attention */
-        x = enDeAtt[i].Make(outputEnc, x, outputEnc, maskEncDec,
-                            isTraining, &enDeAttCache[i], EN_DE_ATT);
-
-        /* dropout */
-        if (isTraining && dropoutP > 0)
-            x = Dropout(x, dropoutP);
-
-        /* residual connection */
-        x = Sum(res, x);
-
-        res = x;
-
-        /* layer normalization with pre-norm for fnn */
-        x = fnnLayerNorms[i].Make(x);
-
-        /* fnn */
-        x = fnns[i].Make(x, isTraining);
-
-        /* dropout */
-        if (isTraining && dropoutP > 0)
-            x = Dropout(x, dropoutP);
-
-        /* residual connection */
-        x = Sum(res, x);
-    }
-
-    x = decoderLayerNorm->Make(x);
 
     return x;
 }

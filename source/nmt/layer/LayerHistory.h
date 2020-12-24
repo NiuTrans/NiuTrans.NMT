@@ -27,16 +27,42 @@
 #include "../../niutensor/tensor/function/FHeader.h"
 
 using namespace nts;
+using namespace std;
 
 namespace nmt
 {
 
-/*
-multi-head attention
-y(Q, K, V) = cat(head_1, head_2, ..., head_n)
-where head_i = Attention(Q * w_i^Q, K * w_i^K, V * w_i^V)
-      attention(Q, K, V) = softmax(Q * K^T/d_k^0.5) V
-      d_k = dimension size of K
+#define MAX_LAYER_NUM 10
+
+/* 
+the class of history list
+*/
+class History {
+public:
+
+    /* number of elements in the list */
+    int count;
+
+    /* the history list */
+    XTensor list[MAX_LAYER_NUM];
+
+public: 
+
+    /* contructor */
+    History();
+
+    /* de-contructor */
+    ~History();
+
+    /* append a layer to the list */
+    void Add(XTensor& layer);
+};
+
+/* 
+the class of layer history
+it generates the weighted sum of previous layers
+the result for the i-th layer is:
+res = sum(layers[0...i] * weight[i][0...i])
 */
 class LayerHistory
 {
@@ -44,8 +70,8 @@ public:
     /* device id */
     int devID;
 
-    /* the triangle weight matrix for dlcl */
-    XTensor weight;
+    /* the triangle weight matrices for dlcl */
+    XTensor* weights;
 
     /* hidden size */
     int d;
@@ -57,7 +83,7 @@ public:
     int count;
 
     /* a history to store the value of intimidate layers */
-    TensorList history;
+    History* history;
 
     /* layer normalization for each intimidate layer */
     LN* layerNorms;
@@ -79,7 +105,7 @@ public:
     XTensor Pop();
 
     /* clean the history*/
-    void ClearHistory();
+    void ClearHistory(bool reset=true);
 };
 
 }
