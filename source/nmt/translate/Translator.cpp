@@ -54,7 +54,7 @@ void Translator::Init(Config& config)
     sentBatch = config.sBatchSize;
     wordBatch = config.wBatchSize;
 
-    batchLoader.maxInputLen = config.maxSrcLen;
+    batchLoader.maxSrcLen = config.maxSrcLen;
     batchLoader.unkID = config.unkID;
     batchLoader.padID = config.padID;
     batchLoader.startID = config.startID;
@@ -130,10 +130,11 @@ void Translator::Translate(const char* ifn, const char* sfn,
             ((BeamSearch*)seacher)->Search(model, batchEnc, paddingEnc, output, score);
         }
         for (int i = 0; i < indices.Size() - 1; ++i) {
-            Result* res = new Result;
-            res->id = int(indices[i]);
-            res->res = output[i];
-            batchLoader.outputBuffer.Add(res);
+            Example res;
+            res.id = int(indices[i]);
+            for (int j = 0; j < output[i].Size(); j++)
+                res.values.emplace_back(output[i][j]);
+            batchLoader.outputBuffer.emplace_back(std::move(res));
         }
         delete[] output;
 
@@ -147,17 +148,17 @@ void Translator::Translate(const char* ifn, const char* sfn,
             double elapsed = GetClockSec() - batchStart;
             batchStart = GetClockSec();
             LOG("elapsed=%.1fs, sentence=%f, sword=%.1fw/s",
-                elapsed, float(sentCount) / float(batchLoader.inputBuffer.Size()), 
+                elapsed, float(sentCount) / float(batchLoader.inputBuffer.size()), 
                 double(wc) / elapsed);
             wc = 0;
         }
     }
 
     /* append empty lines to the result */
-    for (int i = 0; i < batchLoader.emptyLines.Size(); i++) {
-        Result* emptyRes = new Result;
-        emptyRes->id = batchLoader.emptyLines[i];
-        batchLoader.outputBuffer.Add(emptyRes);
+    for (const auto& empty: batchLoader.emptyLines) {
+        Example emptyRes;
+        emptyRes.id = empty;
+        batchLoader.outputBuffer.emplace_back(emptyRes);
     }
 
     double startDump = GetClockSec();
@@ -171,7 +172,7 @@ void Translator::Translate(const char* ifn, const char* sfn,
     double elapsed = GetClockSec() - startDump;
 
     LOG("translation completed (word=%d, sent=%zu)", 
-        wordCountTotal, batchLoader.inputBuffer.Size() + batchLoader.emptyLines.Size());
+        wordCountTotal, batchLoader.outputBuffer.size() + batchLoader.emptyLines.size());
 }
 
 /*

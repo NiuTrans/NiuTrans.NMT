@@ -317,7 +317,6 @@ void BeamSearch::Generate(StateBundle* prev, StateBundle* beam)
     InitTensor(&indexCPU, order, dimsTopK, X_INT, -1);
 
     score.Reshape(order, dimsBeam);
-    prob.Reshape(order, dimsBeam);
 
     /* keep the most promising candidates in the beam */
     TopK(score, scoreTopK, index, -1, beamSize, true);
@@ -361,6 +360,7 @@ void BeamSearch::Generate(StateBundle* prev, StateBundle* beam)
     indexCPU.Reshape(indexCPU.dimSize[0], indexCPU.dimSize[indexCPU.order - 1]);
 
     indexCPU.SetDevice(prob.devID);
+
     prob = Gather(prob, indexCPU);
     probPath = Gather(probPath, indexCPU);
 
@@ -727,6 +727,7 @@ GreedySearch::GreedySearch()
     endSymbolNum = 0;
     endSymbols = new int[32];
     startSymbol = -1;
+    scalarMaxLength = -1;
 }
 
 /* de-constructor */

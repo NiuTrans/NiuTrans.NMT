@@ -24,7 +24,7 @@
 #define __TESTER_H__
 
 #include "Search.h"
-#include "DataSet.h"
+#include "TranslateDataSet.h"
 
 namespace nmt
 {
