@@ -43,6 +43,9 @@ public:
     /* vector size of the linear transformation */
     int hSize;
 
+    /* the padding index */
+    int padIdx;
+
     /* transformation matrix */
     XTensor w;
 

@@ -31,6 +31,7 @@ namespace nmt
 /* constructor */
 FNN::FNN()
 {
+    dropoutP = 0.0;
     inSize = -1;
     outSize = -1;
     hSize = -1;
@@ -66,8 +67,8 @@ void FNN::InitModel(Config& config)
     _SetDataFanInOut(&w1, scale);
     _SetDataFanInOut(&w2, scale);
 
-    w1.SetDataRand(-(DTYPE)sqrt(6.0F / inSize), (DTYPE)sqrt(6.0F / inSize));
-    w2.SetDataRand(-(DTYPE)sqrt(6.0F / hSize), (DTYPE)sqrt(6.0F / hSize));
+    //w1.SetDataRand(-(DTYPE)sqrt(6.0F / inSize), (DTYPE)sqrt(6.0F / inSize));
+    //w2.SetDataRand(-(DTYPE)sqrt(6.0F / hSize), (DTYPE)sqrt(6.0F / hSize));
 
     b1.SetZeroAll();
     b2.SetZeroAll();
@@ -85,9 +86,9 @@ XTensor FNN::Make(XTensor& input, bool isTraining)
 
     /* t1 = max(0, x * w1 + b1) */
     t1 = Rectify(MulAndShift(input, w1, b1));
-
+    
     if (isTraining && dropoutP > 0)
-        t1 = Dropout(t1, dropoutP);
+        t1 = Dropout(t1, dropoutP, /*inplace=*/true);
 
     /* result = t1 * w2 + b2 */
     return MulAndShift(t1, w2, b2);

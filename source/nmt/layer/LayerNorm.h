@@ -39,10 +39,10 @@ public:
     int devID;
 
     /* the transformation matrix w */
-    XTensor w;
+    XTensor weight;
 
     /* the bias term b */
-    XTensor b;
+    XTensor bias;
 
     /* dimension size of the model */
     int d;

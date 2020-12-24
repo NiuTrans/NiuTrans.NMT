@@ -33,6 +33,7 @@ Output::Output()
     devID = -1;
     vSize = -1;
     hSize = -1;
+    padIdx = -1;
 }
 
 /* de-constructor */
@@ -49,11 +50,15 @@ void Output::InitModel(Config& config)
     devID = config.devID;
     hSize = config.modelSize;
     vSize = config.tgtVocabSize;
+    padIdx = config.padID;
 
     InitTensor2D(&w, vSize, hSize, X_FLOAT, devID);
 
     DTYPE v = 1.0F / (float)sqrt((float)hSize);
     w.SetDataRandn(0, v);
+    for (int i = 0; i < hSize; i++) {
+        w.Set2D(0.0F, padIdx, i);
+    }
 }
 
 /*

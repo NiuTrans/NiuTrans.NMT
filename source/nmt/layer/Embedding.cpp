@@ -31,6 +31,7 @@ Embedder::Embedder()
 {
     devID = -1;
     vSize = -1;
+    eSize = -1;
     maxLength = -1;
 }
 
@@ -58,6 +59,10 @@ void Embedder::InitModel(Config& config, bool isEnc)
     maxLength = maxLength + 1 + 1;
     DTYPE v = 1.0F / (float)sqrt((float)eSize);
     w.SetDataRandn(0, v);
+
+    for (int i = 0; i < eSize; i++) {
+        w.Set2D(0.0F, padIdx, i);
+    }
 
     /* create the positional embedding matrix */
     MakePosEmbedding(maxLength);
@@ -138,13 +143,13 @@ XTensor Embedder::Make(XTensor& input, bool isDec, bool isTraining, int nstep)
     posEmbedding = Unsqueeze(embTMP, 0, input.GetDim(0));
 
     /* then we make word embeddings */
-    //w.enableGrad = false;
     wordEmbedding = Gather(w, input);
 
-    wordEmbedding = Linear(wordEmbedding, (float)sqrt((float)eSize));
+    wordEmbedding = Linear(wordEmbedding, (float)sqrt((float)eSize), 0.0F, true);
 
     /* we sum over the two embeddings */
     SumMe(wordEmbedding, posEmbedding);
+
     return wordEmbedding;
 }
 

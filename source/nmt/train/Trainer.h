@@ -70,6 +70,9 @@ public:
     /* traing step number */
     int nstep;
 
+    /* interval step for logging */
+    int logInterval;
+
     /* the maximum number of saved checkpoints */
     int maxCheckpoint;
 

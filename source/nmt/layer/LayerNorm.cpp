@@ -51,12 +51,12 @@ void LN::InitModel(Config& config)
 
     d = config.modelSize;
 
-    InitTensor1D(&w, d, X_FLOAT, devID);
-    InitTensor1D(&b, d, X_FLOAT, devID);
-    w.SetDataRand(1.0F, 1.0F);
-    b.SetZeroAll();
+    InitTensor1D(&weight, d, X_FLOAT, devID);
+    InitTensor1D(&bias, d, X_FLOAT, devID);
+    weight.SetDataRand(1.0F, 1.0F);
+    bias.SetZeroAll();
 
-    w.SetDataFixed(1);
+    weight.SetDataFixed(1);
 }
 
 /*
@@ -104,7 +104,11 @@ XTensor LN::Make(XTensor& input)
     }
 
     /* result = x' * w + b   */
-    return xn * w + b;
+    xn = xn * weight;
+
+    xn = Sum(xn, bias, true);
+
+    return xn;
 }
 
 }

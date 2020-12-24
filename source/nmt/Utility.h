@@ -73,8 +73,14 @@ public:
     /* path to the validation file */
     char validFN[1024];
 
+    /* path to the pre-trained model */
+    char pretrainedModel[1024];
+
     /* device id */
     int devID;
+
+    /* interval step for logging */
+    int logInterval;
 
     /* beam size */
     int beamSize;
@@ -139,6 +145,9 @@ public:
     /* add LN to the encoder/decoder output or not */
     bool finalNorm;
 
+    /* reserve history for encoder/decoder layers or not */
+    bool useHistory;
+
     /* indicates whether the model is running for machine translation */
     bool isMT;
 
@@ -151,10 +160,10 @@ public:
     /* indicates whether the model is running with FP16 data type */
     bool useFP16;
 
-    /* indicates whether we use the RPR attention */
+    /* use the RPR attention or not */
     bool useRPR;
 
-    /* indicates whether we train the model */
+    /* train the model or not */
     bool isTraining;
 
     /* dropout rate for the model */

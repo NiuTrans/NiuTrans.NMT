@@ -43,6 +43,14 @@ int NMTMain(int argc, const char** argv)
         
         Model model;
         model.InitModel(config);
+
+        TensorList params;
+        model.GetParams(params);
+        int count = 0;
+        for (int i = 0; i < params.count; i++)
+            count += params[i]->unitNum;
+        LOG("number of parameters: %d", count);
+
         Trainer trainer;
         trainer.Init(config);
         trainer.Train(config.trainFN, config.validFN, config.modelFN, &model);

@@ -67,8 +67,8 @@ Config::Config(int argc, const char** argv)
     LoadParamInt(argsNum, args, "embsize", &embSize, 512);
     LoadParamInt(argsNum, args, "modelsize", &modelSize, 512);
     LoadParamInt(argsNum, args, "maxpos", &maxPosition, 1024);
-    LoadParamInt(argsNum, args, "maxsrclen", &maxSrcLen, 120);
-    LoadParamInt(argsNum, args, "maxtgtlen", &maxTgtLen, 120);
+    LoadParamInt(argsNum, args, "maxsrclen", &maxSrcLen, 1024);
+    LoadParamInt(argsNum, args, "maxtgtlen", &maxTgtLen, 1024);
     LoadParamInt(argsNum, args, "fnnhidden", &fnnHiddenSize, modelSize * 2);
     LoadParamInt(argsNum, args, "vsize", &srcVocabSize, 10152);
     LoadParamInt(argsNum, args, "vsizetgt", &tgtVocabSize, 10152);
@@ -79,6 +79,7 @@ Config::Config(int argc, const char** argv)
     LoadParamBool(argsNum, args, "rpr", &useRPR, maxRP > 0);
     LoadParamBool(argsNum, args, "prenorm", &preNorm, true);
     LoadParamBool(argsNum, args, "finalnorm", &finalNorm, true);
+    LoadParamBool(argsNum, args, "dlcl", &useHistory, false);
 
     // TODO: refactor the parameters type to support weight sharing during training
     LoadParamInt(argsNum, args, "shareemb", &shareAllEmbeddings, 0);
@@ -90,9 +91,11 @@ Config::Config(int argc, const char** argv)
     /* options for training */
     LoadParamString(argsNum, args, "train", trainFN, "");
     LoadParamString(argsNum, args, "valid", validFN, "");
+    LoadParamString(argsNum, args, "pretrain", pretrainedModel, "");
     LoadParamInt(argsNum, args, "dev", &devID, 0);
+    LoadParamInt(argsNum, args, "log", &logInterval, 100);
     LoadParamInt(argsNum, args, "wbatch", &wBatchSize, 4096);
-    LoadParamInt(argsNum, args, "sbatch", &sBatchSize, 8);
+    LoadParamInt(argsNum, args, "sbatch", &sBatchSize, 16);
     isTraining = (strcmp(trainFN, "") == 0) ? false : true;
     LoadParamBool(argsNum, args, "mt", &isMT, true);
     LoadParamFloat(argsNum, args, "dropout", &dropout, 0.3);
@@ -121,7 +124,7 @@ Config::Config(int argc, const char** argv)
     LoadParamBool(argc, args, "smallbatch", &isSmallBatch, true);
     LoadParamBool(argc, args, "bigbatch", &isBigBatch, false);
     LoadParamBool(argc, args, "randbatch", &isRandomBatch, false);
-    LoadParamInt(argc, args, "bucketsize", &bucketSize, wBatchSize * 10);
+    LoadParamInt(argc, args, "bucketsize", &bucketSize, wBatchSize * 1);
 
     /* options for translating */
     LoadParamString(argsNum, args, "test", testFN, "");
@@ -244,8 +247,6 @@ void ShowParams(int argc, char** argv)
     }
     fprintf(stderr, "\n");
 }
-
-#define MAX_WORD_NUM 120
 
 /*
 split string by delimiter, this will return indices of all sub-strings

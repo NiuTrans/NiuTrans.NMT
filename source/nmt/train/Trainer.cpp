@@ -38,6 +38,7 @@ namespace nmt
 /* constructor */
 Trainer::Trainer()
 {
+    nwarmup = -1;
     cfg = NULL;
 }
 
@@ -62,13 +63,15 @@ initialization
 void Trainer::Init(Config& config)
 {
     cfg = &config;
+    
     lrate = config.lrate;
     lrbias = config.lrbias;
     sBatchSize = config.sBatchSize;
     wBatchSize = config.wBatchSize;
     bucketSize = config.bucketSize;
-    nepoch = config.nepoch;
     nstep = config.nstep;
+    nepoch = config.nepoch;
+    logInterval = config.logInterval;
     maxCheckpoint = config.maxCheckpoint;
     d = config.modelSize;
     nwarmup = config.nwarmup;
@@ -92,6 +95,8 @@ void Trainer::Init(Config& config)
     batchLoader.endID = config.endID;
     batchLoader.unkID = config.unkID;
     batchLoader.padID = config.padID;
+    batchLoader.maxSrcLen = config.maxSrcLen;
+    batchLoader.maxTgtLen = config.maxTgtLen;
 }
 
 /*
@@ -151,7 +156,6 @@ void Trainer::Train(const char* fn, const char* validFN,
 
         while (!batchLoader.IsEmpty())
         {
-
             XNet net;
             net.Clear();
 
@@ -177,10 +181,12 @@ void Trainer::Train(const char* fn, const char* validFN,
             XTensor output;
 
             /* make the network */
-            if (model->isLM)
+            if (model->isLM) {
                 model->MakeLM(batchEnc, output, paddingEnc, true);
-            else if (model->isMT)
+            }
+            else if (model->isMT) {
                 model->MakeMT(batchEnc, batchDec, output, paddingEnc, paddingDec, true);
+            }
             else {
                 ShowNTErrors("Illegal model type!");
             }
@@ -200,9 +206,21 @@ void Trainer::Train(const char* fn, const char* validFN,
 
             net.isGradEfficient = true;
 
+            bool debug(false);
+            if (debug) {
+                LOG("after forward:");
+                batchEnc.mem->ShowMemUsage(stderr);
+                exit(0);
+            }
+
             if (doUpdate) {
 
                 net.Backward(lossTensor);
+
+                if (model->encoder->useHistory)
+                    model->encoder->history->ClearHistory(/*reset=*/false);
+                if (model->decoder->useHistory)
+                    model->decoder->history->ClearHistory(/*reset=*/false);
 
                 gradStep += 1;
                 loss += lossBatch;
@@ -240,7 +258,7 @@ void Trainer::Train(const char* fn, const char* validFN,
                 break;
             }
 
-            if (step % 30 == 0) {
+            if (step % logInterval == 0) {
                 double elapsed = GetClockSec() - startT;
                 LOG("elapsed=%.1fs, step=%d, epoch=%d, "
                     "total word=%d, total batch=%d, loss=%.3f, ppl=%.3f, lr=%.2e", 
@@ -289,6 +307,8 @@ test the model
 */
 void Trainer::Validate(const char* fn, const char* ofn, Model* model)
 {
+    DISABLE_GRAD;
+
     int wc = 0;
     int ws = 0;
     int wordCount = 0;
@@ -339,7 +359,9 @@ void Trainer::Validate(const char* fn, const char* ofn, Model* model)
         int length = output.GetDim(1);
 
         labelOnehot = IndexToOnehot(label, vSizeTgt, 0);
+
         lossTensor = CrossEntropy(output, labelOnehot, paddingDec);
+
         float lossBatch = ReduceSumAllValue(lossTensor);
 
         loss += lossBatch;
@@ -350,7 +372,9 @@ void Trainer::Validate(const char* fn, const char* ofn, Model* model)
 
     double elapsed = GetClockSec() - startT;
 
-    LOG("test finished (took %.1fs, sentence=%d, word=%d, loss=%.3f and ppl=%.3f)",
+    ENABLE_GRAD;
+
+    LOG("validating finished (took %.1fs, sentence=%d, word=%d, loss=%.3f and ppl=%.3f)",
         elapsed, sentCount, wordCount, loss / wordCount / log(2.0), exp(loss / wordCount));
 }
 

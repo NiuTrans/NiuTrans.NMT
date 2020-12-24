@@ -30,6 +30,7 @@ namespace nmt
 /* constructor */
 GLU::GLU()
 {
+    devID = -1;
     inSize = -1;
     outSize = -1;
     hSize = -1;
