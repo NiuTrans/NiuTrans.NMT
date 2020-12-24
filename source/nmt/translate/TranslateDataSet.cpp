@@ -81,7 +81,7 @@ void DataSet::LoadDataToBuffer()
         }
 
         /* make sure that the sequence ends with EOS */
-        if (values.size() != 0 && values[-1] != endID)
+        if (values.size() != 0 && values.back() != endID)
             values.emplace_back(endID);
 
         Example example;
