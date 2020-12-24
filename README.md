@@ -30,6 +30,10 @@ NiuTrans.NMT is a lightweight and efficient Transformer-based neural machine tra
 * Framework agnostic. It supports various models trained with other tools, e.g., fairseq models.
 * The code is simple and friendly to beginners.
 
+## Recent Updates:
+December 2020: Added support for the training of [DLCL](https://arxiv.org/abs/1906.01787) and [RPR Attention](https://arxiv.org/abs/1803.02155)
+December 2020: Heavily reduced the memory footprint of training by optimizing the backward functions
+
 ## Installation
 
 ### Requirements
