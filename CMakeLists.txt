@@ -129,10 +129,7 @@ if(USE_CUDA)
             )
         else()
             set(CUDA_NVCC_FLAGS "-Xcompiler -fPIC -maxrregcount=0 --disable-warnings -use_fast_math -DUSE_CUDA -Wno-deprecated-gpu-targets -std=c++11 ")
-            set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -arch=sm_30 
-                -gencode=arch=compute_30,code=sm_30 
-                -gencode=arch=compute_50,code=sm_50 
-                -gencode=arch=compute_52,code=sm_52 
+            set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -arch=sm_60
                 -gencode=arch=compute_60,code=sm_60 
                 -gencode=arch=compute_61,code=sm_61 
                 -gencode=arch=compute_62,code=sm_62 

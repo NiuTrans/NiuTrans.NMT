@@ -18,41 +18,20 @@
  * $Created by: XIAO Tong (xiaotong@mail.neu.edu.cn) 2018-07-10
  */
 
-//#define CRTDBG_MAP_ALLOC
-//#include <stdlib.h>
-//#include <crtdbg.h>
 
 #include "./nmt/NMT.h"
-#include "niutensor/network/XNoder.h"
 #include "niutensor/tensor/XTensor.h"
-#include "niutensor/tensor/core/movement/Spread.h"
 
 using namespace nmt;
 using namespace nts;
 
-void test() {
-    XTensor input, node, index;
-    InitTensor2D(&input, 32, 4);
-    InitTensor2D(&input, 13, 4);
-    InitTensor2D(&input, 32, 4);
-
-    XNoder::MakeGrad(&input);
-
-    XTensor* tmp = NewTensorBufV2(&input, input.devID, input.mem);
-    _SpreadForGather(tmp, node.grad, &index);
-
-    _SumMe(input.grad, tmp);
-    input.grad->Dump(stderr);
-}
 
 int main(int argc, const char** argv)
 {
     //_CrtSetDbgFlag(_CrtSetDbgFlag(_CRTDBG_REPORT_FLAG) | _CRTDBG_LEAK_CHECK_DF);
-    //_CrtSetBreakAlloc(2708);
+    //_CrtSetBreakAlloc(18);
 
     NMTMain(argc - 1, argv + 1);
-
-    //test();
 
     //_CrtDumpMemoryLeaks();
     

@@ -93,6 +93,7 @@ Config::Config(int argc, const char** argv)
     LoadParamString(argsNum, args, "valid", validFN, "");
     LoadParamString(argsNum, args, "pretrain", pretrainedModel, "");
     LoadParamInt(argsNum, args, "dev", &devID, 0);
+    LoadParamInt(argsNum, args, "seed", &seed, 1);
     LoadParamInt(argsNum, args, "log", &logInterval, 100);
     LoadParamInt(argsNum, args, "wbatch", &wBatchSize, 4096);
     LoadParamInt(argsNum, args, "sbatch", &sBatchSize, 16);

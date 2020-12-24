@@ -79,6 +79,9 @@ public:
     /* device id */
     int devID;
 
+    /* random seed */
+    int seed;
+
     /* interval step for logging */
     int logInterval;
 

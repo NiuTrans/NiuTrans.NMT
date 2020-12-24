@@ -54,7 +54,7 @@ Step 3: Average the last ten checkpoints:
 python tools/Ensemble.py -input 'model.bin.*' -output model.ensemble
 ```
 
-It costs about 310s per epoch on a GTX 1080 Ti.
+It costs about 280 second per epoch on a GTX 1080 Ti.
 
 Expected BLEU score (lenalpha=0.6, maxlenalpha=1.2):
 

@@ -21,7 +21,7 @@ EOS = 2
 UNK = 3
 
 # The maximum length for a sentence
-MAX_SENT_LEN = 120
+MAX_SENT_LEN = 1024
 
 parser = argparse.ArgumentParser(
     description='Prepare parallel data for nmt training')
