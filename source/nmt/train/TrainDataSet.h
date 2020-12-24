@@ -30,8 +30,6 @@
 #include "../../niutensor/tensor/XTensor.h"
 #include "../../niutensor/tensor/XGlobal.h"
 
-#define MAX_WORD_NUM 120
-
 using namespace std;
 
 namespace nts {
@@ -57,6 +55,7 @@ struct TrainExample {
 
 /* A `TrainDataSet` is associated with a file which contains training data. */
 struct TrainDataSet {
+
 public:
     /* the data buffer */
     TrainBufferType buffer;
@@ -68,13 +67,13 @@ public:
     FILE* fp;
 
     /* current index in the buffer */
-    size_t curIdx;
+    int curIdx;
 
     /* size of used data in the buffer */
-    size_t bufferUsed;
+    int bufferUsed;
 
     /* size of the bucket used for grouping sentences */
-    size_t bucketSize;
+    int bucketSize;
 
     /* indicates whether it is used for training */
     bool isTraining;
@@ -91,13 +90,31 @@ public:
     /* end symbol */
     int endID;
 
+    /* the maximum length for a source sentence */
+    int maxSrcLen;
+
+    /* the maximum length for a target sentence */
+    int maxTgtLen;
+
 public:
 
-    /* sort the input by length (in descending order) */
-    void SortByLength();
+    /* get the maximum source sentence length in a range */
+    int MaxSrcLen(int begin, int end);
+
+    /* get the maximum target sentence length in a range */
+    int MaxTgtLen(int begin, int end);
+
+    /* sort the input by source sentence length (in descending order) */
+    void SortBySrcLength();
+
+    /* sort the input by target sentence length (in descending order) */
+    void SortByTgtLength();
 
     /* sort buckets by key (in descending order) */
-    void SortBucket();
+    void SortBuckets();
+
+    /* shuffle buckets */
+    void ShuffleBuckets();
 
     /* sort the output by key (in descending order) */
     void SortInBucket(int begin, int end);
@@ -108,7 +125,7 @@ public:
     /* generate a mini-batch */
     UInt64List LoadBatch(XTensor* batchEnc, XTensor* paddingEnc,
                          XTensor* batchDec, XTensor* paddingDec, XTensor* label,
-                         size_t minSentBatch, size_t batchSize, int devID);
+                         int minSentBatch, int batchSize, int devID);
 
     /* initialization function */
     void Init(const char* dataFile, int bucketSize, bool training);
