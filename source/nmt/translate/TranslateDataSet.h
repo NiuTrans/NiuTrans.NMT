@@ -31,34 +31,30 @@
 #include "../../niutensor/tensor/XTensor.h"
 #include "../../niutensor/tensor/XGlobal.h"
 
-#define MAX_WORD_NUM 120
-
 using namespace std;
 
 namespace nts {
+
 /* the struct of tokenized input */
 struct Example {
-    int id;
-    IntList values;
-};
 
-/* the struct of tokenized output */
-struct Result {
     int id;
-    IntList res;
+
+    vector<int> values;
 };
 
 /* A `DataSet` is associated with a file which contains variable length data.*/
 struct DataSet {
+
 public:
     /* the data buffer */
-    InputBufferType inputBuffer;
+    vector<Example> inputBuffer;
 
     /* a list of empty line number */
-    IntList emptyLines;
+    vector<int> emptyLines;
 
     /* the result buffer */
-    OutputBufferType outputBuffer;
+    vector<Example> outputBuffer;
 
     /* the pointer to file stream */
     ifstream* fp;
@@ -73,7 +69,7 @@ public:
     Vocab tgtVocab;
 
     /* the maximum length of an input sequence */
-    int maxInputLen;
+    int maxSrcLen;
 
     /* the padding id */
     int padID;
