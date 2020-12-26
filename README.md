@@ -25,6 +25,8 @@
 
 ## Features
 NiuTrans.NMT is a lightweight and efficient Transformer-based neural machine translation system. 中文介绍见[README_ZH.md](./README_ZH.md)
+
+
 Its main features are:
 * Few dependencies. It is implemented with pure C++, and all dependencies are optional.
 * Fast decoding. It supports various decoding acceleration strategies, such as batch pruning and dynamic batch size.
