@@ -34,7 +34,7 @@ Its main features are:
 * Framework agnostic. It supports various models trained with other tools, e.g., fairseq models.
 
 ## Recent Updates
-November 2021: Released the code of our submissions to the [WMT21 efficiency task](http://statmt.org/wmt21/efficiency-task.html). We speed up the inference by 3 times on the GPU (up to 250k words/s with an NVIDIA A100)!
+November 2021: Released the code of our submissions to the [WMT21 efficiency task](http://statmt.org/wmt21/efficiency-task.html). We speed up the inference by 3 times on the GPU (up to 250k words/s on a single NVIDIA A100 GPU card)!
 
 December 2020: Added support for the training of [DLCL](https://arxiv.org/abs/1906.01787) and [RPR Attention](https://arxiv.org/abs/1803.02155)
 
