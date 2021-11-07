@@ -14,192 +14,202 @@
  * limitations under the License.
  */
 
+
 /*
  * $Created by: XIAO Tong (xiaotong@mail.neu.edu.cn) 2019-03-27
  * $Modified by: HU Chi (huchinlp@gmail.com) 2020-04, 2020-06
  */
 
-#include "Search.h"
+#include <iostream>
+#include <algorithm>
+#include "Searcher.h"
 #include "Translator.h"
-#include "../Utility.h"
 #include "../../niutensor/tensor/XTensor.h"
 #include "../../niutensor/tensor/XUtility.h"
 #include "../../niutensor/tensor/core/CHeader.h"
 
 using namespace nts;
 
+/* the nmt namespace */
 namespace nmt
 {
 
 /* constructor */
 Translator::Translator()
 {
+    config = NULL;
+    model = NULL;
+    seacher = NULL;
+    outputBuf = new XList;
 }
 
 /* de-constructor */
 Translator::~Translator()
 {
-    if (beamSize > 1)
+    if (config->translation.beamSize > 1)
         delete (BeamSearch*)seacher;
     else
         delete (GreedySearch*)seacher;
+    delete outputBuf;
 }
 
 /* initialize the model */
-void Translator::Init(Config& config)
+void Translator::Init(NMTConfig& myConfig, NMTModel& myModel)
 {
-    beamSize = config.beamSize;
-    vSize = config.srcVocabSize;
-    vSizeTgt = config.tgtVocabSize;
-    sentBatch = config.sBatchSize;
-    wordBatch = config.wBatchSize;
+    model = &myModel;
+    config = &myConfig;
 
-    batchLoader.maxSrcLen = config.maxSrcLen;
-    batchLoader.unkID = config.unkID;
-    batchLoader.padID = config.padID;
-    batchLoader.startID = config.startID;
-    batchLoader.endID = config.endID;
-
-    if (beamSize > 1) {
-        LOG("translating with beam search (%d)", beamSize);
+    if (config->translation.beamSize > 1) {
+        LOG("Translating with beam search (beam=%d, batchSize= %d sents | %d tokens, lenAlpha=%.2f, maxLenAlpha=%.2f) ", 
+            config->translation.beamSize, config->common.sBatchSize, config->common.wBatchSize,
+            config->translation.lenAlpha, config->translation.maxLenAlpha);
         seacher = new BeamSearch();
-        ((BeamSearch*)seacher)->Init(config);
+        ((BeamSearch*)seacher)->Init(myConfig);
     }
-    else if (beamSize == 1) {
-        LOG("translating with greedy search");
+    else if (config->translation.beamSize == 1) {
+        LOG("translating with greedy search (batchSize= %d sents | %d tokens, maxLenAlpha=%.2f)", 
+            config->common.sBatchSize, config->common.wBatchSize, config->translation.maxLenAlpha);
         seacher = new GreedySearch();
-        ((GreedySearch*)seacher)->Init(config);
+        ((GreedySearch*)seacher)->Init(myConfig);
     }
     else {
         CheckNTErrors(false, "Invalid beam size\n");
     }
 }
 
-/*
-test the model
->> ifn - input data file
->> sfn - source vocab file
->> tfn - target vocab file
->> ofn - output data file
->> model - pretrained model
-*/
-void Translator::Translate(const char* ifn, const char* sfn, 
-                           const char* tfn, const char* ofn, Model* model)
+/* sort the outputs by the indices (in ascending order) */
+void Translator::SortOutputs()
 {
-    int wc = 0;
-    int wordCountTotal = 0;
-    int sentCount = 0;
-    int batchCount = 0;
+    sort(outputBuf->items, outputBuf->items + outputBuf->count,
+        [](void* a, void* b) {
+            return ((Sample*)(a))->index <
+                   ((Sample*)(b))->index;
+        });
+}
 
-    int devID = model->devID;
+/* 
+translate a batch of sequences 
+>> batchEnc - the batch of inputs
+>> paddingEnc - the paddings of inputs
+>> indices - indices of input sequences
+the results will be saved in the output buffer
+*/
+void Translator::TranslateBatch(XTensor& batchEnc, XTensor& paddingEnc, IntList& indices)
+{
+    int batchSize = batchEnc.GetDim(0);
+    for (int i = 0; i < model->decoder->nlayer; ++i) {
+        model->decoder->selfAttCache[i].miss = true;
+        model->decoder->enDeAttCache[i].miss = true;
+    }
 
-    double startT = GetClockSec();
+    IntList** outputs = new IntList * [batchSize];
+    for (int i = 0; i < batchSize; i++)
+        outputs[i] = new IntList();
 
-    /* batch of input sequences */
+    /* greedy search */
+    if (config->translation.beamSize == 1) {
+        ((GreedySearch*)seacher)->Search(model, batchEnc, paddingEnc, outputs);
+    }
+
+    /* beam search */
+    if (config->translation.beamSize > 1) {
+        XTensor score;
+        ((BeamSearch*)seacher)->Search(model, batchEnc, paddingEnc, outputs, score);
+    }
+
+    /* save the outputs to the buffer */
+    for (int i = 0; i < batchSize; i++) {
+        Sample* sample = new Sample(NULL, outputs[i]);
+        sample->index = indices[i];
+        outputBuf->Add(sample);
+    }
+
+    delete[] outputs;
+}
+
+/* the translation function */
+bool Translator::Translate()
+{
+    batchLoader.Init(*config, false);
+
+    /* inputs */
     XTensor batchEnc;
-
-    /* padding */
     XTensor paddingEnc;
 
-    batchLoader.Init(ifn, sfn, tfn);
-    LOG("loaded the input file, elapsed=%.1fs ", GetClockSec() - startT);
+    /* sentence information */
+    XList info;
+    XList inputs;
+    int wordCount;
+    IntList indices;
+    inputs.Add(&batchEnc);
+    inputs.Add(&paddingEnc);
+    info.Add(&wordCount);
+    info.Add(&indices);
 
-    int count = 0;
-    double batchStart = GetClockSec();
-    while (!batchLoader.IsEmpty())
-    {
-        count++;
-
-        for (int i = 0; i < model->decoder->nlayer; ++i) {
-            model->decoder->selfAttCache[i].miss = true;
-            model->decoder->enDeAttCache[i].miss = true;
-        }
-
-        auto indices = batchLoader.LoadBatch(&batchEnc, &paddingEnc, 
-                                             sentBatch, wordBatch, devID);
-
-        IntList* output = new IntList[indices.Size() - 1];
-
-        /* greedy search */
-        if (beamSize == 1) {
-            ((GreedySearch*)seacher)->Search(model, batchEnc, paddingEnc, output);
-        }
-        /* beam search */
-        else {
-            XTensor score;
-            ((BeamSearch*)seacher)->Search(model, batchEnc, paddingEnc, output, score);
-        }
-        for (int i = 0; i < indices.Size() - 1; ++i) {
-            Example res;
-            res.id = int(indices[i]);
-            for (int j = 0; j < output[i].Size(); j++)
-                res.values.emplace_back(output[i][j]);
-            batchLoader.outputBuffer.emplace_back(std::move(res));
-        }
-        delete[] output;
-
-        wc += int(indices[-1]);
-        wordCountTotal += int(indices[-1]);
-
-        sentCount += int(indices.Size() - 1);
-        batchCount += 1;
-
-        if (count % 1 == 0) {
-            double elapsed = GetClockSec() - batchStart;
-            batchStart = GetClockSec();
-            LOG("elapsed=%.1fs, sentence=%f, sword=%.1fw/s",
-                elapsed, float(sentCount) / float(batchLoader.inputBuffer.size()), 
-                double(wc) / elapsed);
-            wc = 0;
-        }
+    while (!batchLoader.IsEmpty()) {
+        batchLoader.GetBatchSimple(&inputs, &info);
+        TranslateBatch(batchEnc, paddingEnc, indices);
+        if (batchLoader.appendEmptyLine)
+            fprintf(stderr, "%d/%d\n", batchLoader.bufIdx - 1, batchLoader.buf->Size() - 1);
+        else
+            fprintf(stderr, "%d/%d\n", batchLoader.bufIdx, batchLoader.buf->Size());                                                                                       
     }
 
-    /* append empty lines to the result */
-    for (const auto& empty: batchLoader.emptyLines) {
-        Example emptyRes;
-        emptyRes.id = empty;
-        batchLoader.outputBuffer.emplace_back(emptyRes);
+    /* handle empty lines */
+    for (int i = 0; i < batchLoader.emptyLines.Size(); i++) {
+        Sample* sample = new Sample(NULL, NULL);
+        sample->index = batchLoader.emptyLines[i];
+        outputBuf->Add(sample);
     }
+    SortOutputs();
 
-    double startDump = GetClockSec();
-
-    /* reorder the result */
-    batchLoader.SortOutput();
-
-    /* print the result to a file */
-    batchLoader.DumpRes(ofn);
-
-    double elapsed = GetClockSec() - startDump;
-
-    LOG("translation completed (word=%d, sent=%zu)", 
-        wordCountTotal, batchLoader.outputBuffer.size() + batchLoader.emptyLines.size());
-}
-
-/*
-dump the result into the file
->> file - data file
->> output - output tensor
-*/
-void Translator::Dump(FILE* file, XTensor* output)
-{
-    if (output != NULL && output->unitNum != 0) {
-        int seqLength = output->dimSize[output->order - 1];
-
-        for (int i = 0; i < output->unitNum; i += seqLength) {
-            for (int j = 0; j < seqLength; j++) {
-                int w = output->GetInt(i + j);
-                if (w < 0 || w == 1 || w == 2)
-                    break;
-                fprintf(file, "%d ", w);
-            }
-
-            fprintf(file, "\n");
-        }
-    }
+    /* dump the translation results */
+    if (strcmp(config->translation.outputFN, "") != 0)
+        DumpResToFile(config->translation.outputFN);
     else
-    {
-        fprintf(file, "\n");
+        DumpResToStdout();
+
+    for (int i = 0; i < outputBuf->Size(); i++) {
+        Sample* s = (Sample*)(outputBuf->GetItem(i));
+        delete s;
+    }
+    outputBuf->Clear();
+
+    return true;
+}
+
+/* dump the translation results to a file */
+void Translator::DumpResToFile(const char* ofn)
+{
+    ofstream f(ofn);
+    int sentNum = batchLoader.appendEmptyLine ? outputBuf->Size() - 1 : outputBuf->Size();
+    for (int i = 0; i < sentNum; i++) {
+        Sample* sample = (Sample*)outputBuf->Get(i);
+        if (sample->tgtSeq != NULL) {
+            for (int j = 0; j < sample->tgtSeq->Size(); j++) {
+                int id = sample->tgtSeq->Get(j);
+                f << batchLoader.tgtVocab.id2token[id] << " ";
+            }
+        }
+        f << "\n";
+    }
+    f.close();
+}
+
+/* dump the translation results to stdout */
+void Translator::DumpResToStdout()
+{
+    int sentNum = batchLoader.appendEmptyLine ? outputBuf->Size() - 1 : outputBuf->Size();
+    for (int i = 0; i < sentNum; i++) {
+        Sample* sample = (Sample*)outputBuf->Get(i);
+        if (sample->tgtSeq != NULL) {
+            for (int j = 0; j < sample->tgtSeq->Size(); j++) {
+                int id = sample->tgtSeq->Get(j);
+                cout << batchLoader.tgtVocab.id2token[id] <<  " ";
+            }
+        }
+        cout << "\n";
     }
 }
 
-}
+} /* end of the nmt namespace */

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+
 /*
  * $Created by: XIAO Tong (xiaotong@mail.neu.edu.cn) 2018-08-01
  * $Modified by: HU Chi (huchinlp@gmail.com) 2020-07
@@ -22,11 +23,12 @@
 #ifndef __EMBEDDING_H__
 #define __EMBEDDING_H__
 
-#include "../Utility.h"
+#include "../Config.h"
 #include "../../niutensor/network/XNet.h"
 
 using namespace nts;
 
+/* the nmt namespace */
 namespace nmt
 {
 
@@ -39,6 +41,15 @@ word embedding + positional embedding
 class Embedder
 {
 public:
+    /* indicates whether it is run with fp16 */
+    bool fp16;
+
+    /* indicates whether it is shared with other modules */
+    bool shareEncDecEmb;
+
+    /* indicates whether train the model */
+    bool isTraining;
+
     /* device id */
     int devID;
 
@@ -51,20 +62,20 @@ public:
     /* maximum length of the sequence */
     int maxLength;
 
-    /* dimension size of the hidden layers in the  model */
-    int d;
-
     /* padding index */
     int padIdx;
 
     /* word embedding matrix */
-    XTensor w;
+    XTensor* w;
 
     /* predefined positional embeddings. It can speeds up
        the embedding processing by re-loading. */
     XTensor posEmbeddingBase;
 
 public:
+    /* set the training flag */
+    void SetTrainingFlag(bool myIsTraining);
+
     /* constructor */
     Embedder();
 
@@ -72,15 +83,15 @@ public:
     ~Embedder();
 
     /* initialize the model */
-    void InitModel(Config& config, bool isEnc = true);
+    void InitModel(NMTConfig& config, bool isEnc = true);
 
     /* make positional embeddings */
     void MakePosEmbedding(int length);
 
     /* make the network */
-    XTensor Make(XTensor& input, bool isDec, bool isTraining, int nstep = 0);
+    XTensor Make(XTensor& input, bool isDec, int nstep);
 };
 
-}
+} /* end of the nmt namespace */
 
-#endif
+#endif /* __EMBEDDING_H__ */

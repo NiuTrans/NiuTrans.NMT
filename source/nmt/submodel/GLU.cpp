@@ -14,18 +14,24 @@
  * limitations under the License.
  */
 
+
 /*
  * $Created by: Bei Li (libei_neu@outlook.com) 2020-02-03
  */
 
 #include "GLU.h"
 #include "Embedding.h"
-#include "../Utility.h"
+#include "../Config.h"
 #include "../../niutensor/tensor/core/CHeader.h"
 #include "../../niutensor/tensor/function/FHeader.h"
 
 namespace nmt
 {
+/* set the training flag */
+void GLU::SetTrainingFlag(bool myIsTraining)
+{
+    isTraining = myIsTraining;
+}
 
 /* constructor */
 GLU::GLU()
@@ -34,6 +40,7 @@ GLU::GLU()
     inSize = -1;
     outSize = -1;
     hSize = -1;
+    isTraining = false;
 }
 
 /* de-constructor */
@@ -44,15 +51,17 @@ GLU::~GLU()
 /*
 initialize the model
 >> config - configurations of the model
+>> isEnc - indicates whether it is a encoder module
 */
-void GLU::InitModel(Config& config)
+void GLU::InitModel(NMTConfig& config, bool isEnc)
 {
-    devID = config.devID;
+    SetTrainingFlag(config.training.isTraining);
+    devID = config.common.devID;
 
     float minmax = 0;
 
-    inSize = config.modelSize;
-    outSize = config.modelSize;
+    inSize = isEnc ? config.model.encEmbDim : config.model.decEmbDim;
+    outSize = isEnc ? config.model.encEmbDim : config.model.decEmbDim;
 
     InitTensor2D(&w1, hSize, outSize, X_FLOAT, devID);
     InitTensor1D(&b1, outSize, X_FLOAT, devID);

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+
 /*
  * $Created by: XIAO Tong (xiaotong@mail.neu.edu.cn) 2019-04-08
  * Start of a new week - I just finished several documents.
@@ -25,6 +26,7 @@
 
 using namespace nts;
 
+/* the nmt namespace */
 namespace nmt
 {
 
@@ -42,9 +44,9 @@ float LengthPenalizer::GNMT(float length, float alpha)
 
     base = (length + 5.0F) / (1.0F + 5.0F);
 
-    lp = pow(base, alpha);
+    lp = (float)pow(base, alpha);
 
     return lp;
 }
 
-}
+} /* end of the nmt namespace */

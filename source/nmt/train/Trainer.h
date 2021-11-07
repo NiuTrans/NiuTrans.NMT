@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+
 /*
  * $Created by: XIAO Tong (xiaotong@mail.neu.edu.cn) 2018-08-02
  */
@@ -23,9 +24,11 @@
 
 #include "../Model.h"
 #include "TrainDataSet.h"
+#include "../../niutensor/train/XLearningRate.h"
 
 using namespace nts;
 
+/* the nmt namespace */
 namespace nmt
 {
 
@@ -33,85 +36,30 @@ namespace nmt
 class Trainer
 {
 public:
-
-    /* configurations */
-    Config* cfg;
-
-    /* dimension size of each inner layer */
-    int d;
-
-    /* step number of warm-up for training */
-    int nwarmup;
-
-    /* vocabulary size of the source side */
-    int vSize;
-
-    /* vocabulary size of the target side */
-    int vSizeTgt;
-
-    /* learning rate */
-    float lrate;
-
-    /* the parameter that controls the maximum learning rate in training */
-    float lrbias;
-
-    /* sentence batch size */
-    int sBatchSize;
-
-    /* word batch size */
-    int wBatchSize;
-
-    /* size of bucket for grouping data by length */
-    int bucketSize;
-
-    /* training epoch number */
-    int nepoch;
-
-    /* traing step number */
-    int nstep;
-
-    /* interval step for logging */
-    int logInterval;
-
-    /* the maximum number of saved checkpoints */
-    int maxCheckpoint;
-
-    /* indicates whether we use adam */
-    bool useAdam;
-
-    /* hyper parameters of adam*/
-    float adamBeta1;
-    float adamBeta2;
-    float adamDelta;
+    /* parameters of adam */
     float adamBeta1T;
     float adamBeta2T;
 
-    /* list of the moment of the parameter matrices */
+    /* the model for training */
+    NMTModel* model;
+
+    /* configurations */
+    NMTConfig* config;
+
+    /* list of the moment of the parameters */
     TensorList moments;
 
-    /* list of the 2nd order moment of the parameter matrices */
+    /* list of the 2nd order moment of the parameters */
     TensorList moments2nd;
 
-    /* indicates whether the data file is shuffled for training */
-    bool isShuffled;
+    /* used for loading batches for training */
+    TrainDataSet trainBatchLoader;
 
-    /* the factor of label smoothing */
-    DTYPE labelSmoothingP;
+    /* used for loading batches for validation */
+    TrainDataSet validBatchLoader;
 
-    /* number of steps after which we make a checkpoint */
-    int nStepCheckpoint;
-
-    /* indicates whether we make a checkpoint after each training epoch */
-    bool useEpochCheckpoint;
-
-    /* number of batches on which we do model update */
-    int updateStep;
-
-    /* indicates whether the sequence is sorted by length */
-    bool isLenSorted;
-
-    /* used for loading batches */
-    TrainDataSet batchLoader;
+    /* the learning rate scheduler */
+    XLearningRate LRScheduler;
 
 public:
     /* constructor */
@@ -121,24 +69,27 @@ public:
     ~Trainer();
 
     /* initialize the trainer */
-    void Init(Config& config);
+    void Init(NMTConfig& myConfig, NMTModel& myModel);
 
-    /* train the model */
-    void Train(const char* fn, const char* validFN, const char* modelFN, Model* model);
+    /* train the model for several epochs */
+    void Run();
+
+    /* train the model for a step */
+    void RunStep();
 
     /* test the model */
-    void Validate(const char* fn, const char* ofn, Model* model);
+    void Validate();
 
     /* make a checkpoint */
-    void MakeCheckpoint(Model* model, const char* validFN, const char* modelFN, const char* label, int id);
+    void MakeCheckpoint(const char* label, int id);
 
     /* update the model by delta rule */
-    void Update(Model* model, const float lr);
+    void Update(const float lr);
 
     /* prepare model for training */
-    void PrepareModel(Model* model);
+    void PrepareModel();
 };
 
-}
+} /* end of the nmt namespace */
 
-#endif
+#endif /* end of __TRAINER_H__ */

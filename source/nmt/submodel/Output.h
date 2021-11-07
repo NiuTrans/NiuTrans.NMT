@@ -14,69 +14,64 @@
  * limitations under the License.
  */
 
+
 /*
  * $Created by: XIAO Tong (xiaotong@mail.neu.edu.cn) 2018-07-31
  * $Modified by: HU Chi (huchinlp@gmail.com) 2020-04
  */
 
-#ifndef __FNN_H__
-#define __FNN_H__
+#ifndef __OUTPUT_H__
+#define __OUTPUT_H__
 
-#include "LayerNorm.h"
-#include "../Utility.h"
-#include "../../niutensor/tensor/XTensor.h"
+#include <memory>
+#include "../Config.h"
+#include "../../niutensor/tensor/function/FHeader.h"
 
 using namespace nts;
 
+/* the nmt namespace */
 namespace nmt
 {
 
-/* a fnn: y = max(0, x * w1 + b1) * w2 + b2 */
-class FNN
+/* output layer */
+class OutputLayer
 {
 public:
+    /* indicates whether share decoder embeddings and output weights */
+    bool shareDecInputOutputEmb;
+
+    /* indicates whether train the model */
+    bool isTraining;
+
     /* device id */
     int devID;
 
-    /* size of input vector */
-    int inSize;
+    /* vocabulary size */
+    int vSize;
 
-    /* size of output vector */
-    int outSize;
-
-    /* size of hidden layers */
+    /* vector size of the linear transformation */
     int hSize;
 
-    /* matrix of transformation 1 */
-    XTensor w1;
-
-    /* bias of transformation 1 */
-    XTensor b1;
-
-    /* matrix of transformation 2 */
-    XTensor w2;
-
-    /* bias of transformation 2 */
-    XTensor b2;
-
-    /* dropout probability */
-    DTYPE dropoutP;
+    /* transformation matrix */
+    XTensor* w;
 
 public:
+    /* set the training flag */
+    void SetTrainingFlag(bool myIsTraining);
 
     /* constructor */
-    FNN();
+    OutputLayer();
 
     /* de-constructor */
-    ~FNN();
+    ~OutputLayer();
 
     /* initialize the model */
-    void InitModel(Config& config);
+    void InitModel(NMTConfig& config);
 
     /* make the network */
-    XTensor Make(XTensor& input, bool isTraining);
+    XTensor Make(XTensor& input, bool normalized);
 };
 
-}
+} /* end of the nmt namespace */
 
-#endif
+#endif /* __OUTPUT_H__ */

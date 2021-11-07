@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+
 /*
  * $Created by: XIAO Tong (xiaotong@mail.neu.edu.cn) 2019-03-13
  * $Modified by: HU Chi (huchinlp@gmail.com) 2020-04
@@ -22,10 +23,11 @@
 #include <iostream>
 
 #include "Predictor.h"
-#include "../layer/NNUtil.h"
+#include "../submodel/NNUtil.h"
 
 using namespace nts;
 
+/* the nmt namespace */
 namespace nmt
 {
 
@@ -91,7 +93,7 @@ create an initial state
 >> beamSize - beam size
 >> state - the state to be initialized
 */
-void Predictor::Create(Model* model, XTensor* top, const XTensor* input,
+void Predictor::Create(NMTModel* model, XTensor* top, const XTensor* input,
                        int beamSize, StateBundle* state)
 {
     int dims[MAX_TENSOR_DIM_NUM];
@@ -126,7 +128,7 @@ read a state
 2) probabilities of hypotheses
 3) parts of the network for expanding toward the next state
 */
-void Predictor::Read(Model* model, StateBundle* state)
+void Predictor::Read(NMTModel* model, StateBundle* state)
 {
     m = model;
     s = state;
@@ -208,12 +210,15 @@ void Predictor::Predict(StateBundle* next, XTensor& aliveState, XTensor& encodin
     m->MakeMTMaskDec(paddingEnc, paddingDec, maskDec, maskEncDec);
 
     /* make the decoding network */
-    decoding = m->decoder->Make(inputDec, encoding, NULL, &maskEncDec, nstep, false);
+    if (m->config->model.decPreLN)
+        decoding = m->decoder->RunFastPreNorm(inputDec, encoding, &maskEncDec, nstep);
+    else
+        decoding = m->decoder->RunFastPostNorm(inputDec, encoding, &maskEncDec, nstep);
 
     CheckNTErrors(decoding.order >= 2, "The tensor must be of order 2 or larger!");
 
     /* generate the output probabilities */
-    m->outputLayer->Make(decoding, output, false, true);
+    output = m->outputLayer->Make(decoding, true);
 }
 
 /*
@@ -281,4 +286,4 @@ XTensor Predictor::GetLastPrediction(StateBundle* state, int devID)
     return lastPred;
 }
 
-}
+} /* end of the nmt namespace */

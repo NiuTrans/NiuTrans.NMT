@@ -14,32 +14,26 @@
  * limitations under the License.
  */
 
-/*
- * $Created by: Bei Li (libei_neu@outlook.com) 2020-02-05
- * This file includes some common modules of the Transformer model
- */
 
+ /*
+  * $Created by: Bei Li (libei_neu@outlook.com) 2020-02-03
+  */
+
+#ifndef __COMMONMODULE_H__
+#define __COMMONMODULE_H__
+
+#include "LayerNorm.h"
 #include "CommonModules.h"
-#include "../../niutensor/tensor/core/CHeader.h"
-#include "../../niutensor/tensor/function/FHeader.h"
 
+using namespace nts;
+
+/* the nmt namespace */
 namespace nmt
 {
 
-/* 
-flexible layer normalization for the Transformer 
->> input - input tensor
->> ln - the layernorm network
->> prenorm - whether we use prenorm or not
->> before - whether we use layernorm before attention/fnn
->> after - whether we use layernorm after attention/fnn
-*/
-XTensor LayerNorm(XTensor& input, LN& ln, bool prenorm, bool before, bool after)
-{
-    if (after ^ prenorm)
-        return ln.Make(input);
-    else
-        return input;
-}
+/* the layer normalization module to control pre-norm or post-norm*/
+XTensor LN(XTensor& input, LayerNorm& ln, bool prenorm, bool before, bool after);
 
-}
+} /* end of the nmt namespace */
+
+#endif

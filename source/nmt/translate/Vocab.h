@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+
 /*
  * $Created by: HU Chi (huchinlp@foxmail.com) 2020-01-03
  */
@@ -26,33 +27,49 @@
 
 using namespace std;
 
-namespace nts {
+/* the nmt namespace */
+namespace nmt {
 
 /* the vocabulary class */
 struct Vocab
 {
-    /* the start id for words */
-    int startID;
+    /* id of start-of-sequence token */
+    int sosID;
+
+    /* id of end-of-sequence token */
+    int eosID;
+
+    /* id of paddings */
+    int padID;
+
+    /* id of unknown tokens */
+    int unkID;
 
     /* size of the vocabulary */
     int vocabSize;
 
-    /* a dict that maps words to ids */
-    unordered_map<string, int> word2id;
+    /* a dict that maps tokens to ids */
+    unordered_map<string, int> token2id;
 
     /* a dict that maps ids to words */
-    unordered_map<int, string> id2word;
+    unordered_map<int, string> id2token;
+
+    /* set ids for special tokens */
+    void SetSpecialID(int sos, int eos, int pad, int unk);
 
     /* load a vocabulary from a file */
-    void Load(const string& src);
+    void Load(const string& vocabFN);
 
     /* save a vocabulary to a file */
-    void Save(const string& src);
+    void Save(const string& vocabFN);
 
     /* copy data from another vocab */
     void CopyFrom(const Vocab& v);
+
+    /* constructor */
+    Vocab();
 };
 
-}
+} /* end of the nmt namespace */
 
-#endif
+#endif /* __VOCAB_H__ */

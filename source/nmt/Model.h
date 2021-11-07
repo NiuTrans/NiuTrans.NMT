@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+
 /*
  * $Created by: XIAO Tong (xiaotong@mail.neu.edu.cn) 2018-07-31
  * $Modified by: HU Chi (huchinlp@gmail.com) 2020-04
@@ -22,23 +23,28 @@
 #ifndef __MODEL_H__
 #define __MODEL_H__
 
-#include "Encoder.h"
+#include "Config.h"
 #include "Decoder.h"
-#include "layer/FNN.h"
-#include "layer/Output.h"
-#include "Utility.h"
-#include "layer/Attention.h"
+#include "Encoder.h"
+#include "submodel/FFN.h"
+#include "submodel/Output.h"
+#include "submodel/Attention.h"
+#include "../niutensor/train/XModel.h"
 
+/* the nmt namespace */
 namespace nmt
 {
 
-/* a nmt model that keeps parameters of the encoder,
+/* an nmt model that keeps parameters of the encoder,
    the decoder and the output layer (softmax). */
-class Model
+class NMTModel : public XModel
 {
 public:
     /* device id */
     int devID;
+
+    /* configurations */
+    NMTConfig* config;
 
     /* the encoder */
     AttEncoder* encoder;
@@ -47,75 +53,77 @@ public:
     AttDecoder* decoder;
 
     /* output layer */
-    Output* outputLayer;
-
-    /* indicates whether the model is running for language modeling */
-    bool isLM;
-
-    /* indicates whether the model is running for machine translation */
-    bool isMT;
-
-    /* indicates whether the model is running with FP16 data type */
-    bool useFP16;
-
-    /* number of heads in the attention model */
-    int nhead;
-
-    /* indicates whether share encoders embeddings with decoders */
-    int shareAllEmbeddings;
-
-    /* indicates whether share decoder embeddings with output weights */
-    int shareDecInputOutputWeight;
+    OutputLayer* outputLayer;
 
 public:
     /* constructor */
-    Model();
+    NMTModel();
 
     /* de-constructor */
-    ~Model();
+    ~NMTModel();
+
+    /* get configurations */
+    vector<int*> GetIntConfigs();
 
     /* initialize the model */
-    void InitModel(Config& config);
+    void InitModel(NMTConfig& config);
 
     /* print model configurations */
-    void ShowModelConfig(Config& config);
+    void ShowModelConfig();
 
     /* make the encoding network */
-    XTensor MakeEncoder(XTensor& input, XTensor* mask, bool isTraining);
+    XTensor MakeEncoder(XTensor& input, XTensor* mask);
 
     /* make the encoding network */
     XTensor MakeDecoder(XTensor& inputEnc, XTensor& inputDec, XTensor* mask,
-        XTensor& MaskEncDec, bool isTraining);
+                        XTensor& MaskEncDec);
 
     /* make the network for language modeling (with the output softmax layer) */
-    void MakeLM(XTensor& input, XTensor& output, XTensor& padding, bool isTraining);
+    XTensor MakeLM(XTensor& input, XTensor& padding);
 
     /* make the network for machine translation (with the output softmax layer) */
-    void MakeMT(XTensor& inputEnc, XTensor& inputDec, XTensor& output,
-        XTensor& paddingEnc, XTensor& paddingDec, bool isTraining);
+    XTensor MakeMT(XTensor& inputEnc, XTensor& inputDec,
+                   XTensor& paddingEnc, XTensor& paddingDec);
 
     /* make the mask for training MT models */
     void MakeMTMask(XTensor& inputEnc, XTensor& inputDec,
-        XTensor& paddingEnc, XTensor& paddingDec,
-        XTensor& maskEnc, XTensor& maskDec, XTensor& maskEncDec);
+                    XTensor& paddingEnc, XTensor& paddingDec,
+                    XTensor& maskEnc, XTensor& maskDec, XTensor& maskEncDec);
 
     /* make the mask of the encoder */
     void MakeMTMaskEnc(XTensor& paddingEnc, XTensor& maskEnc);
 
     /* make the mask of the decoder */
     void MakeMTMaskDec(XTensor& paddingEnc, XTensor& paddingDec,
-        XTensor& maskDec, XTensor& maskEncDec);
+                       XTensor& maskDec, XTensor& maskEncDec);
+
+    /* make the mask of the decoder for inference */
+    XTensor MakeMTMaskDecInference(XTensor& paddingEnc);
 
     /* get parameter matrices */
     void GetParams(TensorList& list);
 
     /* dump the model to a file */
-    void Dump(const char* fn);
+    void DumpToFile(const char* fn);
 
     /* read the parameters */
-    void Read(FILE* file);
+    void LoadFromFile(FILE* file);
+
+    /* get the number of parameters */
+    uint64_t GetParamNum();
+
+    /* set the training flag */
+    void SetTrainingFlag(bool isTraining);
+
+public:
+
+    /* clone the model (overloaded method of XModel) */
+    XModel * Clone(int devID);
+
+    /* run the neural network (overloaded method of XModel) */
+    bool RunSimple(XList * inputs, XList * outputs, XList * golds, XList * losses);
 };
 
-}
+} /* end of the nmt namespace */
 
-#endif
+#endif /* __MODEL_H__ */

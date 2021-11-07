@@ -14,30 +14,35 @@
  * limitations under the License.
  */
 
+
 /*
  * $Created by: XIAO Tong (xiaotong@mail.neu.edu.cn) 2019-03-27
  * $Modified by: HU Chi (huchinlp@gmail.com) 2020-04, 2020-06
  */
 
-#include "Search.h"
-#include "../Utility.h"
+#include "Searcher.h"
+#include "../Config.h"
 #include "../../niutensor/tensor/core/CHeader.h"
 
 using namespace nts;
 
+/* the nmt namespace */
 namespace nmt
 {
 /* constructor */
 BeamSearch::BeamSearch()
 {
     alpha = 0;
-    maxLength = 0;
+    maxLen = 0;
     beamSize = 0;
     batchSize = 0;
     endSymbolNum = 0;
     fullHypos = NULL;
     endSymbols = new int[32];
     startSymbol = -1;
+    isEarlyStop = false;
+    needReorder = false;
+    scalarMaxLength = 0.0F;
 }
 
 /* de-constructor */
@@ -54,14 +59,15 @@ initialize the model
 >> argc - number of arguments
 >> argv - list of pointers to the arguments
 */
-void BeamSearch::Init(Config& config)
+void BeamSearch::Init(NMTConfig& config)
 {
-    beamSize = config.beamSize;
-    batchSize = config.sBatchSize;
-    alpha = config.lenAlpha;
-    endSymbols[0] = config.endID;
-    startSymbol = config.startID;
-    scalarMaxLength = config.maxLenAlpha;
+    maxLen = config.translation.maxLen;
+    beamSize = config.translation.beamSize;
+    batchSize = config.common.sBatchSize;
+    alpha = config.translation.lenAlpha;
+    endSymbols[0] = config.model.eos;
+    startSymbol = config.model.sos;
+    scalarMaxLength = config.translation.maxLenAlpha;
 
     if (endSymbols[0] >= 0)
         endSymbolNum = 1;
@@ -101,11 +107,11 @@ search for the most promising states
 >> model - the transformer model
 >> input - input of the model
 >> padding - padding of the input
->> output - output that represents the sequences as rows
+>> outputs - outputs that represent the sequences as rows
 >> score - score of the sequences
 */
-void BeamSearch::Search(Model* model, XTensor& input, XTensor& padding, 
-                        IntList* output, XTensor& score)
+void BeamSearch::Search(NMTModel* model, XTensor& input, XTensor& padding, 
+                        IntList** outputs, XTensor& score)
 {
     Predictor predictor;
     XTensor maskEnc;
@@ -117,13 +123,16 @@ void BeamSearch::Search(Model* model, XTensor& input, XTensor& padding,
     CheckNTErrors(endSymbolNum > 0, "The search class is not initialized!");
     CheckNTErrors(startSymbol >= 0, "The search class is not initialized!");
 
-    Prepare(input.unitNum / input.dimSize[input.order - 1], beamSize);
+    Prepare(input.GetDim(0), beamSize);
 
     /* encoder mask */
     model->MakeMTMaskEnc(padding, maskEnc);
 
     /* make the encoding network */
-    encoding = model->MakeEncoder(input, &maskEnc, false);
+    if (model->config->model.encPreLN)
+        encoding = model->encoder->RunFastPreNorm(input, &maskEnc);
+    else
+        encoding = model->encoder->RunFastPostNorm(input, &maskEnc);
 
     encodingBeam = Unsqueeze(encoding, encoding.order - 2, beamSize);
     inputBeam = Unsqueeze(input, input.order - 1, beamSize);
@@ -134,10 +143,9 @@ void BeamSearch::Search(Model* model, XTensor& input, XTensor& padding,
     paddingBeam.ReshapeMerged(paddingBeam.order - 3);
 
     /* max output-length = scalar * source-length */
-    int lengthLimit = (int)(input.dimSize[input.order - 1] * scalarMaxLength);
+    int lengthLimit = MIN(int(float(input.GetDim(-1)) * scalarMaxLength), maxLen);
 
     CheckNTErrors(lengthLimit > 0, "no max length specified!");
-    maxLength = lengthLimit;
 
     StateBundle* states = new StateBundle[lengthLimit + 1];
     StateBundle* first = states;
@@ -190,19 +198,17 @@ void BeamSearch::Search(Model* model, XTensor& input, XTensor& padding,
 
         /* stop searching when all hypotheses are completed */
         if (IsAllCompleted(next)) {
-            maxLength = l + 1;
             break;
         }
 
         /* remove finished sentences */
-
         //RemoveFinishedStates(next, encodingBeam, inputBeam, paddingBeam, aliveState);
     }
 
     /* fill the heap with incomplete hypotheses if necessary */
     FillHeap(next);
 
-    Dump(output, &score);
+    Dump(outputs, &score);
 
     delete[] states;
 }
@@ -359,8 +365,7 @@ void BeamSearch::Generate(StateBundle* prev, StateBundle* beam)
     probPath.Reshape(probPath.unitNum, 1);
     indexCPU.Reshape(indexCPU.dimSize[0], indexCPU.dimSize[indexCPU.order - 1]);
 
-    indexCPU.SetDevice(prob.devID);
-
+    indexCPU.FlushToDevice(prob.devID);
     prob = Gather(prob, indexCPU);
     probPath = Gather(probPath, indexCPU);
 
@@ -452,7 +457,7 @@ void BeamSearch::Expand(StateBundle* prev, StateBundle* beam, XTensor& reorderSt
             /*if(aliveStatePids.size() < batchSize)
                 state.pid = aliveStatePids[i/beamSize];*/
 
-                /* scores */
+            /* scores */
             state.modelScore = modelScore.Get(k);
             state.prob = prob.Get(k);
             state.probPath = probPath.Get(k);
@@ -516,7 +521,7 @@ void BeamSearch::FillHeap(StateBundle* beam)
             State& state = states[i * beamSize + j];
 
             /* we push the incomplete hypothesis into the heap */
-            if (fullHypos[state.pid].Count() == 0 && state.isEnd && state.isCompleted) {
+            if (fullHypos[state.pid].Count() == 0) {
                 fullHypos[state.pid].Push(HeapNode<float>(&state, state.modelScore));
             }
             else {
@@ -534,15 +539,16 @@ save the output sequences in a tensor
 >> output - output sequences (for return)
 >> score - score of thes sequences
 */
-void BeamSearch::Dump(IntList* output, XTensor* score)
+void BeamSearch::Dump(IntList** output, XTensor* score)
 {
-    int dims[3] = { batchSize, 1, maxLength };
+    int dims[3] = { batchSize, 1 };
 
     InitTensor(score, 2, dims, X_FLOAT);
     score->SetZeroAll();
 
     /* heap for an input sentence in the batch */
     for (int h = 0; h < batchSize; h++) {
+        IntList* tgt = output[h];
         XHeap<MIN_HEAP, float>& heap = fullHypos[h];
         int c = heap.Count();
 
@@ -564,15 +570,12 @@ void BeamSearch::Dump(IntList* output, XTensor* score)
         while (state != NULL) {
             if (!state->isCompleted)
                 isCompleted = false;
-            if (isCompleted) {
-                output[h].Add(2);
-            }
-            else {
-                output[h].Add(state->prediction);
+            if (!isCompleted) {
+                tgt->Add(state->prediction);
             }
             state = state->last;
         }
-        output[h].Reverse();
+        tgt->Reverse();
 
         score->Set2D(bestScore, h, 0);
     }
@@ -714,7 +717,7 @@ XTensor BeamSearch::MakeFirstMask(StateBundle* beam)
             mask.Set(-1e9, i);
     }
 
-    mask.SetDevice(prob.devID);
+    mask.FlushToDevice(prob.devID);
 
     return mask;
 }
@@ -722,7 +725,7 @@ XTensor BeamSearch::MakeFirstMask(StateBundle* beam)
 /* constructor */
 GreedySearch::GreedySearch()
 {
-    maxLength = 0;
+    maxLen = 0;
     batchSize = 0;
     endSymbolNum = 0;
     endSymbols = new int[32];
@@ -742,12 +745,13 @@ initialize the model
 >> argc - number of arguments
 >> argv - list of pointers to the arguments
 */
-void GreedySearch::Init(Config& config)
+void GreedySearch::Init(NMTConfig& config)
 {
-    batchSize = config.wBatchSize;
-    endSymbols[0] = config.endID;
-    startSymbol = config.startID;
-    scalarMaxLength = config.maxLenAlpha;
+    maxLen = config.translation.maxLen;
+    batchSize = config.common.sBatchSize;
+    endSymbols[0] = config.model.eos;
+    startSymbol = config.model.sos;
+    scalarMaxLength = config.translation.maxLenAlpha;
 
     if (endSymbols[0] >= 0)
         endSymbolNum = 1;
@@ -796,25 +800,28 @@ search for the most promising states
 >> model - the transformer model
 >> input - input of the model
 >> padding - padding of the input
->> output - output that represents the sequences as rows
+>> outputs - outputs tokens of the search results
 */
-void GreedySearch::Search(Model* model, XTensor& input, 
-                          XTensor& padding, IntList* output)
+void GreedySearch::Search(NMTModel* model, XTensor& input, 
+                          XTensor& padding, IntList** outputs)
 {
     XTensor maskEnc;
     XTensor encoding;
-
-    /* dynamic batch size */
-    Prepare(input.unitNum / input.dimSize[input.order - 1]);
+    batchSize = input.GetDim(0);
 
     /* encoder mask */
     model->MakeMTMaskEnc(padding, maskEnc);
 
     /* make the encoding network */
-    encoding = model->encoder->Make(input, &maskEnc, false);
-
+    if (model->config->model.encPreLN)
+        encoding = model->encoder->RunFastPreNorm(input, &maskEnc);
+    else
+        encoding = model->encoder->RunFastPostNorm(input, &maskEnc);
+        
     /* max output-length = scalar * source-length */
-    maxLength = (int)(input.dimSize[input.order - 1] * scalarMaxLength);
+    int lengthLimit = MIN(int(float(input.GetDim(-1)) * scalarMaxLength), maxLen);
+
+    CheckNTErrors(lengthLimit > 0, "Invalid maximum output length");
 
     /* the first token */
     XTensor inputDec;
@@ -826,52 +833,53 @@ void GreedySearch::Search(Model* model, XTensor& input,
     for (int i = 0; i < batchSize; i++)
         finishedFlags[i] = 0;
 
-    /* generate the sequence from left to right */
-    int l = 0;
-    for (; l < maxLength; l++) {
-        XTensor prob;
-        XTensor maskDec;
-        XTensor maskEncDec;
-        XTensor paddingDec;
-        XTensor decoding;
-        XTensor indexCPU;
-        XTensor bestScore;
+    XTensor prob;
+    XTensor maskEncDec;
+    XTensor decoding;
+    XTensor indexCPU;
+    XTensor bestScore;
 
-        InitTensor(&paddingDec, inputDec.order, inputDec.dimSize, X_INT, padding.devID);
-        paddingDec.SetDataFixed(1);
+    InitTensorOnCPU(&indexCPU, &inputDec);
+    InitTensor2D(&bestScore, batchSize, 1, encoding.dataType, encoding.devID);
+
+    for (int l = 0; l < lengthLimit; l++) {
 
         /* decoder mask */
-        model->MakeMTMaskDec(padding, paddingDec, maskDec, maskEncDec);
+        maskEncDec = model->MakeMTMaskDecInference(padding);
 
         /* make the decoding network */
-        decoding = model->decoder->Make(inputDec, encoding, NULL, &maskEncDec, l, false);
+        if (model->config->model.decPreLN)
+            decoding = model->decoder->RunFastPreNorm(inputDec, encoding, &maskEncDec, l);
+        else
+            decoding = model->decoder->RunFastPostNorm(inputDec, encoding, &maskEncDec, l);
 
         /* generate the output probabilities */
-        model->outputLayer->Make(decoding, prob, false, false);
+        prob = model->outputLayer->Make(decoding, false);
 
-        /* get the most promising prediction */
+        /* get the most promising predictions */
         prob.Reshape(prob.dimSize[0], prob.dimSize[prob.order - 1]);
-        InitTensor2D(&bestScore, prob.dimSize[0], 1, prob.dataType, prob.devID);
         TopK(prob, bestScore, inputDec, -1, 1);
 
-        /* save the prediction */
-        InitTensorOnCPU(&indexCPU, &inputDec);
+        /* save the predictions */
         CopyValues(inputDec, indexCPU);
 
         for (int i = 0; i < batchSize; i++) {
-            output[i].Add(indexCPU.GetInt(i));
             if (IsEnd(indexCPU.GetInt(i)))
                 finishedFlags[i] = 1;
+            else if (finishedFlags[i] != 1)
+                (outputs[i])->Add(indexCPU.GetInt(i));
         }
 
-        int finished = 0;
+        int finishedSentNum = 0;
         for (int i = 0; i < batchSize; i++)
-            finished += finishedFlags[i];
-        if (finished == batchSize)
+            finishedSentNum += finishedFlags[i];
+        if (finishedSentNum == batchSize) {
+            l = lengthLimit;
             break;
+        }
     }
 
     delete[] finishedFlags;
 }
 
-}
+} /* end of the nmt namespace */

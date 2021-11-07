@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+
 /*
  * $Created by: Bei Li (libei_neu@outlook.com) 2020-02-03
  * $Modified by: Chi Hu (huchinlp@gmail.com) 2020-12-10
@@ -22,15 +23,20 @@
 #include "Embedding.h"
 #include "LayerNorm.h"
 #include "LayerHistory.h"
-#include "../Utility.h"
 #include "../../niutensor/tensor/core/CHeader.h"
-#include "../../niutensor/tensor/XName.h"
 
 #define SAFE_DELETE(x) do{ if((x) != NULL){delete (x); (x) = NULL;} } while(false)
 #define SAFE_DELETE_ARRAY(x) do{ if((x) != NULL) {delete [] (x); (x)=NULL;} } while(false)
 
+/* the nmt namespace */
 namespace nmt
 {
+
+/* set the training flag */
+void LayerHistory::SetTrainingFlag(bool myIsTraining)
+{
+    isTraining = myIsTraining;
+}
 
 /* constructor */
 LayerHistory::LayerHistory()
@@ -42,6 +48,7 @@ LayerHistory::LayerHistory()
     weights = NULL;
     history = NULL;
     layerNorms = NULL;
+    isTraining = false;
 }
 
 /* de-constructor */
@@ -55,33 +62,38 @@ LayerHistory::~LayerHistory()
 /*
 initialize the model
 >> config - configurations of the model
+>> isEnc - indicates whether it is in the encoder
 */
-void LayerHistory::InitModel(Config& config)
+void LayerHistory::InitModel(NMTConfig& config, bool isEnc)
 {
-    devID = config.devID;
-    d = config.modelSize;
-    nlayer = config.nEncLayer;
+    SetTrainingFlag(config.training.isTraining);
+    devID = config.common.devID;
+    d = isEnc ? config.model.encEmbDim : config.model.decEmbDim;
+    nlayer = isEnc ? config.model.encLayerNum : config.model.decLayerNum;
 
-    /*  the triangle weight matrices for dlcl 
+    /*  the triangle weight matrices for all layers
         layer 0: [1, 0, ..., 0]               
         layer 1: [0.5, 0.5, ..., 0]           
         layer 2: [0.33, 0.33, 0.33, ..., 0]   */
     weights = new XTensor[nlayer + 1];
     for (int i = 0; i < nlayer + 1; i++) {
         InitTensor1D(&(weights[i]), i + 1, X_FLOAT, devID);
-        float* data = new float[i + 1];
-        for (int j = 0; j < i + 1; j++) {
-            data[j] = 1.0F / float(i + 1);
+        if (isTraining) {
+            float* data = new float[i + 1];
+            for (int j = 0; j < i + 1; j++) {
+                data[j] = 1.0F / float(i + 1);
+            }
+            weights[i].SetData(data, i + 1);
+            delete[] data;
         }
-        weights[i].SetData(data, i + 1);
-        delete[] data;
     }
 
-    layerNorms = new LN[nlayer];
+    layerNorms = new LayerNorm[nlayer];
 
     /* initialize the layer normalization of each layer */
     for (int i = 0; i < nlayer; i++) {
-        layerNorms[i].InitModel(config);
+        layerNorms[i].InitModel(config, devID, d,
+        isEnc ? config.model.encoderL1Norm : config.model.decoderL1Norm);
     }
 }
 
@@ -99,7 +111,7 @@ void LayerHistory::Add(XTensor& layer)
         history->Add(layer);
         return;
     }
-    layer = layerNorms[count - 2].Make(layer);
+    layer = layerNorms[count - 2].Run(layer);
     history->Add(layer);
 }
 
@@ -122,9 +134,9 @@ XTensor LayerHistory::Pop()
     int dimSize[MAX_TENSOR_DIM_NUM];
     for (int i = 0; i < stack.order + 1; i++)
         dimSize[i + 1] = stack.dimSize[i];
-    dimSize[0] = list.Size();
+    dimSize[0] = int(list.Size());
     dimSize[1] /= dimSize[0];
-    stack = Reshape(stack, stack.order + 1, dimSize);
+        stack = Reshape(stack, stack.order + 1, dimSize);
 
     XTensor res;
     res = MultiplyDim(stack, weights[list.Size() - 1], 0);
@@ -135,9 +147,9 @@ XTensor LayerHistory::Pop()
 /* clear the history */
 void LayerHistory::ClearHistory(bool reset)
 {
-    if(history != NULL)
+    if (history != NULL)
         delete history;
-    if(reset)
+    if (reset)
         history = new History;
     else
         history = NULL;
@@ -153,13 +165,13 @@ History::History()
 /* delete the history */
 History::~History()
 {
-    for (int i = 0; i < MAX_LAYER_NUM; i++) {
+    /*for (int i = 0; i < MAX_LAYER_NUM; i++) {
         list[i].DestroyData();
         XLink::ClearOutgoing(&list[i]);
         XLink::ClearIncoming(&list[i]);
         if (list[i].grad != NULL)
             delete list[i].grad;
-    }
+    }*/
 }
 
 /* append a layer to the history */
@@ -171,4 +183,4 @@ void History::Add(XTensor& layer)
     count++;
 }
 
-}
+} /* end of the nmt namespace */

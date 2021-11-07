@@ -1,21 +1,24 @@
 '''
-Convert a bpe vocabulary to a NiuTrans.NMT vocab
+Convert a BPE vocabulary to a NiuTrans.NMT vocabulary
 Usage: python3 GetVocab.py -src [bpe_vocab] -tgt [niutrans_nmt_vocab]
 '''
 
 import sys
 import argparse
 
-parser = argparse.ArgumentParser(description='prepare parallel data for nmt training')
-parser.add_argument('-raw', help='Path of the BPE vocabulary', type=str, default='')
-parser.add_argument('-new', help='Path of the NiuTrans.NMT vocabulary to be saved', type=str, default='')
+parser = argparse.ArgumentParser(
+    description='Convert a BPE vocabulary to a NiuTrans.NMT vocabulary')
+parser.add_argument(
+    '-raw', help='Path of the BPE vocabulary', type=str, default='')
+parser.add_argument(
+    '-new', help='Path of the NiuTrans.NMT vocabulary to be saved', type=str, default='')
 args = parser.parse_args()
 
 # User defined words
-PAD=1
-SOS=2
-EOS=2
-UNK=3
+PAD = 1
+SOS = 2
+EOS = 2
+UNK = 3
 
 with open(args.raw, "r", encoding="utf8") as fi:
     with open(args.new, "w", encoding="utf8") as fo:
@@ -33,6 +36,6 @@ with open(args.raw, "r", encoding="utf8") as fi:
 
         # other lines: word, id
         for l in all_lines:
-            
+
             fo.write("{} {}\n".format(l.split()[0], start_id))
             start_id += 1

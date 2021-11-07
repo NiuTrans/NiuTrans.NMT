@@ -14,48 +14,65 @@
  * limitations under the License.
  */
 
+
 /*
- * $Created by: XIAO Tong (xiaotong@mail.neu.edu.cn) 2018-07-31
- * $Modified by: HU Chi (huchinlp@gmail.com) 2020-04
+ * $Created by: Bei Li (libei_neu@outlook.com) 2020-02-03
  */
 
-#ifndef __LAYERNORMAL_H__
-#define __LAYERNORMAL_H__
 
-#include "../Utility.h"
-#include "../../niutensor/network//XNet.h"
+#ifndef __GLU_H__
+#define __GLU_H__
+
+#include "LayerNorm.h"
 
 using namespace nts;
 
 namespace nmt
 {
 
-/* layer normalization: y = norm(x) * w + b
-   where norm(x) = (x - mean)/standardDeviation */
-class LN
+/* a fnn: y = max(0, x * w1 + b1) * w2 + b2 */
+class GLU
 {
 public:
+    /* indicates whether train the model */
+    bool isTraining;
+
     /* device id */
     int devID;
 
-    /* the transformation matrix w */
-    XTensor weight;
+    /* size of input vector */
+    int inSize;
 
-    /* the bias term b */
-    XTensor bias;
+    /* size of output vector */
+    int outSize;
 
-    /* dimension size of the model */
-    int d;
+    /* size of hidden layers */
+    int hSize;
+
+    /* matrix of transformation 1 */
+    XTensor w1;
+
+    /* bias of transformation 1 */
+    XTensor b1;
+
+    /* matrix of transformation 2 */
+    XTensor w2;
+
+    /* bias of transformation 2 */
+    XTensor b2;
 
 public:
+    /* set the training flag */
+    void SetTrainingFlag(bool myIsTraining);
+
     /* constructor */
-    LN();
+    GLU();
 
     /* de-constructor */
-    ~LN();
+    ~GLU();
 
     /* initialize the model */
-    void InitModel(Config& config);
+    void InitModel(NMTConfig& config, bool isEnc);
 
     /* make the network */
     XTensor Make(XTensor& input);

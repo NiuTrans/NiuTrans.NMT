@@ -14,48 +14,57 @@
  * limitations under the License.
  */
 
+
 /*
  * $Created by: XIAO Tong (xiaotong@mail.neu.edu.cn) 2018-07-31
  * $Modified by: HU Chi (huchinlp@gmail.com) 2020-04
  */
 
-#include "FNN.h"
+#include "FFN.h"
 #include "Embedding.h"
-#include "../Utility.h"
+#include "../Config.h"
 #include "../../niutensor/tensor/core/CHeader.h"
 #include "../../niutensor/tensor/function/FHeader.h"
 
+/* the nmt namespace */
 namespace nmt
 {
 
-/* constructor */
-FNN::FNN()
+/* set the training flag */
+void FFN::SetTrainingFlag(bool myIsTraining)
 {
-    dropoutP = 0.0;
+    isTraining = myIsTraining;
+}
+
+/* constructor */
+FFN::FFN()
+{
+    dropoutP = 0.0F;
     inSize = -1;
     outSize = -1;
     hSize = -1;
+    devID = -1;
+    isTraining = false;
 }
 
 /* de-constructor */
-FNN::~FNN()
+FFN::~FFN()
 {
 }
 
 /*
 initialize the model
->> argc - number of arguments
->> argv - list of pointers to the arguments
 >> config - configurations of the model
+>> isEnc - indicates wether it is a encoder module
 */
-void FNN::InitModel(Config& config)
+void FFN::InitModel(NMTConfig& config, bool isEnc)
 {
-    devID = config.devID;
-
-    inSize = config.modelSize;
-    outSize = config.modelSize;
-    hSize = config.fnnHiddenSize;
-    dropoutP = config.fnnDropout;
+    SetTrainingFlag(config.training.isTraining);
+    devID = config.common.devID;
+    dropoutP = config.model.ffnDropout;
+    inSize = isEnc ? config.model.encEmbDim : config.model.decEmbDim;
+    outSize = isEnc ? config.model.encEmbDim : config.model.decEmbDim;
+    hSize = isEnc ? config.model.encFFNHiddenDim : config.model.decFFNHiddenDim;
 
     InitTensor2D(&w1, inSize, hSize, X_FLOAT, devID);
     InitTensor1D(&b1, hSize, X_FLOAT, devID);
@@ -63,15 +72,13 @@ void FNN::InitModel(Config& config)
     InitTensor2D(&w2, hSize, outSize, X_FLOAT, devID);
     InitTensor1D(&b2, outSize, X_FLOAT, devID);
 
-    float scale = 1.0F;
-    _SetDataFanInOut(&w1, scale);
-    _SetDataFanInOut(&w2, scale);
+    if (isTraining) {
+        _SetDataFanInOut(&w1);
+        _SetDataFanInOut(&w2);
 
-    //w1.SetDataRand(-(DTYPE)sqrt(6.0F / inSize), (DTYPE)sqrt(6.0F / inSize));
-    //w2.SetDataRand(-(DTYPE)sqrt(6.0F / hSize), (DTYPE)sqrt(6.0F / hSize));
-
-    b1.SetZeroAll();
-    b2.SetZeroAll();
+        b1.SetZeroAll();
+        b2.SetZeroAll();
+    }
 }
 
 /*
@@ -80,7 +87,7 @@ y = max(0, x * w1 + b1) * w2 + b2
 >> input - the input tensor
 >> return - the output tensor
 */
-XTensor FNN::Make(XTensor& input, bool isTraining)
+XTensor FFN::Make(XTensor& input)
 {
     XTensor t1;
 
@@ -94,4 +101,4 @@ XTensor FNN::Make(XTensor& input, bool isTraining)
     return MulAndShift(t1, w2, b2);
 }
 
-}
+} /* end of the nmt namespace */

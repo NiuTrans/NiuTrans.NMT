@@ -14,49 +14,62 @@
  * limitations under the License.
  */
 
+
 /*
  * $Created by: HU Chi (huchinlp@foxmail.com) 2020-01-03
  */
 
 #include <fstream>
-
 #include "Vocab.h"
-#include "../Utility.h"
+#include "../Config.h"
 
-namespace nts {
+/* the nmt namespace */
+namespace nmt {
+
+/* set ids for special tokens */
+void Vocab::SetSpecialID(int sos, int eos, int pad, int unk)
+{
+    sosID = sos;
+    eosID = eos;
+    padID = pad;
+    unkID = unk;
+}
 
 /* load a vocabulary from a file */
-void Vocab::Load(const string& src)
+void Vocab::Load(const string& vocabFN)
 {
     string vsz, sid;
-    ifstream f(src, ios::in);
-    CheckNTErrors(f.is_open(), "unable to open the vocabulary file");
+    ifstream f(vocabFN, ios::in);
+    CheckNTErrors(f.is_open(), "Failed to open the vocabulary file");
 
     /* get the vocab size and the start id */
     f >> vsz >> sid;
-    startID = stol(sid);
-    vocabSize = stol(vsz);
+    sosID = (int)stol(sid);
+    vocabSize = (int)stol(vsz);
 
     string word, id;
-    for (int i = 0; i < vocabSize - startID; i++) {
+    for (int i = 0; i < vocabSize - sosID; i++) {
         f >> word >> id;
-        word2id[word] = stol(id);
-        id2word[stol(id)] = word;
+        token2id[word] = (int)stol(id);
+        id2token[(int)stol(id)] = word;
+    }
+    for (int i = 0; i < sosID; i++) {
+        id2token[i] = "";
     }
 
     f.close();
 }
 
 /* save a vocabulary to a file */
-void Vocab::Save(const string& src)
+void Vocab::Save(const string& vocabFN)
 {
-    ofstream f(src, ios::out);
+    ofstream f(vocabFN, ios::out);
 
     /* the first line: size of the vocab and the start id */
-    f << vocabSize << "\t" << startID;
+    f << vocabSize << "\t" << sosID;
 
     /* other lines: words and indices */
-    for (const auto& p : word2id)
+    for (const auto& p : token2id)
         f << p.first << "\t" << p.second;
 
     f.close();
@@ -68,11 +81,21 @@ copy data from another vocabulary
 */
 void Vocab::CopyFrom(const Vocab& v)
 {
-    for (const auto& w2i : v.word2id)
-        word2id.insert(w2i);
+    for (const auto& w2i : v.token2id)
+        token2id.insert(w2i);
 
-    for (const auto& i2w : v.id2word)
-        id2word.insert(i2w);
+    for (const auto& i2w : v.id2token)
+        id2token.insert(i2w);
 }
 
+/* constructor */
+Vocab::Vocab()
+{
+    sosID = -1;
+    eosID = -1;
+    padID = -1;
+    unkID = -1;
+    vocabSize = -1;
 }
+
+} /* end of the nmt namespace */

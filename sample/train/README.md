@@ -8,6 +8,8 @@ Step 1: Prepare the training data:
 
 *We provide the BPE code for better reproducibility. The source and target vocabulary are shared with 10,000 merges.*
 
+*You may extract the data manually on Windows.*
+
 ```bash
 # Extract the data
 cd sample/train/
@@ -25,25 +27,24 @@ python3 tools/GetVocab.py \
   -new $IWSLT_PATH/vocab.en
 python3 tools/PrepareParallelData.py \
   -src $IWSLT_PATH/train.de -tgt $IWSLT_PATH/train.en \
-  -src_vocab $IWSLT_PATH/vocab.de -tgt_vocab $IWSLT_PATH/vocab.en \
+  -sv $IWSLT_PATH/vocab.de -tv $IWSLT_PATH/vocab.en \
   -output $IWSLT_PATH/train.data
 python3 tools/PrepareParallelData.py \
   -src $IWSLT_PATH/valid.de -tgt $IWSLT_PATH/valid.en \
-  -src_vocab $IWSLT_PATH/vocab.de -tgt_vocab $IWSLT_PATH/vocab.en \
+  -sv $IWSLT_PATH/vocab.de -tv $IWSLT_PATH/vocab.en \
   -output $IWSLT_PATH/valid.data
 ```
-*You may extract the data manually on Windows.*
 
 
 Step 2: Train the model with default configurations 
-(6 encoder/decoder layer, 512 model size, 50 epoches):
+(6 encoder/decoder layer, 512 model size, 50 epochs):
 
 ```bash
 bin/NiuTrans.NMT \
   -dev 0 \
   -nepoch 50 \
   -model model.bin \
-  -maxcheckpoint 10 \
+  -ncheckpoint 10 \
   -train $IWSLT_PATH/train.data \
   -valid $IWSLT_PATH/valid.data
 ```
@@ -63,8 +64,8 @@ Expected BLEU score (lenalpha=0.6, maxlenalpha=1.2):
 | Single model    | 34.05 (beam=4)  | 33.35    |
 | Ensemble model  | 34.48 (beam=4)  | 34.01    |
 
-We provide models trained with the default configurations:
+<!-- We provide models trained with the default configurations:
 
 [Google Drive](https://drive.google.com/drive/folders/10W89cx60Q7A9nGyg5fwLP21Sg53n6NXV?usp=sharing)
 
-[Baidu Cloud](https://pan.baidu.com/s/1LbkV8kuaDWNunVR2jwOhRg) (password: bdwp)
+[Baidu Cloud](https://pan.baidu.com/s/1LbkV8kuaDWNunVR2jwOhRg) (password: bdwp) -->

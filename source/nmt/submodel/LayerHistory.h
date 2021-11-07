@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+
 /*
  * $Created by: Bei Li (libei_neu@outlook.com) 2020-02-03
  */
@@ -23,23 +24,22 @@
 
 #include "LayerNorm.h"
 #include "LayerHistory.h"
-
 #include "../../niutensor/tensor/function/FHeader.h"
 
 using namespace nts;
 using namespace std;
 
+/* the nmt namespace */
 namespace nmt
 {
 
-#define MAX_LAYER_NUM 10
+#define MAX_LAYER_NUM 50
 
 /* 
 the class of history list
 */
 class History {
 public:
-
     /* number of elements in the list */
     int count;
 
@@ -67,6 +67,9 @@ res = sum(layers[0...i] * weight[i][0...i])
 class LayerHistory
 {
 public:
+    /* indicates whether train the model */
+    bool isTraining;
+
     /* device id */
     int devID;
 
@@ -86,9 +89,12 @@ public:
     History* history;
 
     /* layer normalization for each intimidate layer */
-    LN* layerNorms;
+    LayerNorm* layerNorms;
 
 public:
+    /* set the training flag */
+    void SetTrainingFlag(bool myIsTraining);
+
     /* constructor */
     LayerHistory();
 
@@ -96,18 +102,19 @@ public:
     ~LayerHistory();
 
     /* initialize the model */
-    void InitModel(Config& config);
+    void InitModel(NMTConfig& config, bool isEnc);
 
     /* add the layer output to the history */
     void Add(XTensor& tensor);
 
-    /* compute the layer input for the current layer, the weight sum of all previous layer output after normed in the history */
+    /* compute the layer input for the current layer, 
+       the weight sum of all previous layer output after normed in the history */
     XTensor Pop();
 
     /* clean the history*/
     void ClearHistory(bool reset=true);
 };
 
-}
+} /* end of the nmt namespace */
 
-#endif
+#endif /* __LAYERHISTORY_H__ */

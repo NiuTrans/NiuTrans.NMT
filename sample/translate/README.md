@@ -11,7 +11,7 @@ Step 1: Translate the IWSLT14 De-En test set (tokenized) on the GPU:
 IWSLT_PATH=sample/train/iwslt14.tokenized.de-en
 bin/NiuTrans.NMT \
 -dev 0 \
- -test $IWSLT_PATH/test.de \
+ -input $IWSLT_PATH/test.de \
  -model model.bin \
  -sbatch 64 \
  -beamsize 1  \

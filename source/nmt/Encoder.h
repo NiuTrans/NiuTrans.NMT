@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+
 /*
  * $Created by: XIAO Tong (xiaotong@mail.neu.edu.cn) 2018-07-31
  * $Modified by: HU Chi (huchinlp@gmail.com) 2020-04
@@ -22,16 +23,17 @@
 #ifndef __ENCODER_H__
 #define __ENCODER_H__
 
-#include "Utility.h"
-#include "layer/FNN.h"
-#include "layer/Attention.h"
-#include "layer/Embedding.h"
-#include "layer/LayerNorm.h"
+#include "Config.h"
+#include "submodel/FFN.h"
+#include "submodel/Attention.h"
+#include "submodel/Embedding.h"
+#include "submodel/LayerNorm.h"
+#include "submodel/LayerHistory.h"
 #include "../niutensor/network/XNet.h"
-#include "layer/LayerHistory.h"
 
 using namespace nts;
 
+/* the nmt namespace */
 namespace nmt
 {
 
@@ -41,7 +43,7 @@ base class of the encoder
 class Encoder
 {
 public:
-    virtual XTensor Make(XTensor& input, XTensor* mask, XTensor& mask2, bool isTraining) = 0;
+    virtual XTensor Make(XTensor& input, XTensor* mask, XTensor& mask2) = 0;
 };
 
 /*
@@ -50,17 +52,17 @@ the encoder based on self-attention
 class AttEncoder : Encoder
 {
 public:
+    /* indicates whether train the model */
+    bool isTraining;
+
     /* device id */
     int devID;
 
     /* layer number */
     int nlayer;
 
-    /* hidden layer size of the FNN layer */
-    int hSize;
-
     /* embedding size */
-    int eSize;
+    int embDim;
 
     /* vocabulary size */
     int vSize;
@@ -76,25 +78,26 @@ public:
     Embedder embedder;
 
     /* FNN model of each layer */
-    FNN* fnns;
+    FFN* ffns;
 
     /* attention model of each layer */
-    Attention* selfAtt;
+    Attention* selfAtts;
 
     /* layer normalizations for attention */
-    LN* attLayerNorms;
+    LayerNorm* attLayerNorms;
 
     /* layer normalization for fnn */
-    LN* fnnLayerNorms;
+    LayerNorm* fnnLayerNorms;
 
     /* layer normalization for encoder */
-    LN* encoderLayerNorm;
+    LayerNorm* encoderLayerNorm;
 
     /* dynamic layer history */
     LayerHistory* history;
 
-    /* the location of layer normalization */
-    bool preNorm;
+    /* if true, put layer normalization inside the residual blocks, 
+       else put it between the residual blocks */
+    bool preLN;
 
     /* add LN to the encoder output or not */
     bool finalNorm;
@@ -103,6 +106,9 @@ public:
     bool useHistory;
 
 public:
+    /* set the training flag */
+    void SetTrainingFlag(bool myIsTraining);
+
     /* constructor */
     AttEncoder();
 
@@ -110,15 +116,21 @@ public:
     ~AttEncoder();
 
     /* initialize the model */
-    void InitModel(Config& config);
+    void InitModel(NMTConfig& config);
 
     /* make the encoding network */
-    XTensor Make(XTensor& input, XTensor* mask, XTensor& maskEncDec, bool isTraining);
+    XTensor Make(XTensor& input, XTensor* mask, XTensor& maskEncDec) override;
 
     /* make the encoding network (wrapper) */
-    XTensor Make(XTensor& input, XTensor* mask, bool isTraining);
+    XTensor Make(XTensor& input, XTensor* mask);
+
+    /* run encoding for inference with pre-norm */
+    XTensor RunFastPreNorm(XTensor& input, XTensor* mask);
+
+    /* run encoding for inference with post-norm */
+    XTensor RunFastPostNorm(XTensor& input, XTensor* mask);
 };
 
-}
+} /* end of the nmt namespace */
 
 #endif

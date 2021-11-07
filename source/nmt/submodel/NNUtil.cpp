@@ -14,12 +14,14 @@
  * limitations under the License.
  */
 
+
 /*
  * $Created by: HU Chi (huchinlp@foxmail.com) 2020-03-21
  */
 
 #include "NNUtil.h"
 
+/* the nmt namespace */
 namespace nmt
 {
 
@@ -56,4 +58,4 @@ XTensor AutoGather(XTensor& src, XTensor& index)
     }
 }
 
-}
+} /* end of the nmt namespace */

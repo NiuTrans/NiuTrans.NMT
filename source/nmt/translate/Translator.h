@@ -14,45 +14,44 @@
  * limitations under the License.
  */
 
-/*
- * $Created by: XIAO Tong (xiaotong@mail.neu.edu.cn) 2019-03-27
- * A week with no trips :)
- * $Modified by: HU Chi (huchinlp@gmail.com) 2020-06
- */
 
-#ifndef __TESTER_H__
-#define __TESTER_H__
+/* 
+This class translates test sentences with a trained model. 
+It will dump the result to the output file if specified, else the standard output.
+*/
 
-#include "Search.h"
+#ifndef __TRANSLATOR_H__
+#define __TRANSLATOR_H__
+
+#include "../Model.h"
+#include "Searcher.h"
 #include "TranslateDataSet.h"
 
+/* the nmt namespace */
 namespace nmt
 {
 
-/* This class translates test sentences with a trained model. */
 class Translator
 {
-public:
-    /* vocabulary size of the source side */
-    int vSize;
+private:
+    /* translate a batch of sequences */
+    void TranslateBatch(XTensor& batchEnc, XTensor& paddingEnc, IntList& indices);
 
-    /* vocabulary size of the target side */
-    int vSizeTgt;
-
-    /* batch size for sentences */
-    int sentBatch;
-
-    /* batch size for words */
-    int wordBatch;
-
-    /* beam size */
-    int beamSize;
+private:
+    /* the translation model */
+    NMTModel* model;
 
     /* for batching */
-    DataSet batchLoader;
+    TranslateDataset batchLoader;
 
-    /* decoder for inference */
+    /* the searcher for translation */
     void* seacher;
+
+    /* configuration of the NMT system */
+    NMTConfig* config;
+
+    /* output buffer */
+    XList* outputBuf;
 
 public:
     /* constructor */
@@ -61,17 +60,22 @@ public:
     /* de-constructor */
     ~Translator();
 
-    /* initialize the model */
-    void Init(Config& config);
+    /* initialize the translator */
+    void Init(NMTConfig& myConfig, NMTModel& myModel);
 
-    /* test the model */
-    void Translate(const char* ifn, const char* vfn, const char* ofn, 
-                   const char* tfn, Model* model);
+    /* the translation function */
+    bool Translate();
 
-    /* dump the result into the file */
-    void Dump(FILE* file, XTensor* output);
+    /* sort the outputs by the indices (in ascending order) */
+    void SortOutputs();
+
+    /* dump the translations to a file */
+    void DumpResToFile(const char* ofn);
+
+    /* dump the translations to stdout */
+    void DumpResToStdout();
 };
 
-}
+} /* end of the nmt namespace */
 
-#endif
+#endif /*  */

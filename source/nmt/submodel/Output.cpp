@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+
 /*
  * $Created by: XIAO Tong (xiaotong@mail.neu.edu.cn) 2018-07-31
  * $Modified by: HU Chi (huchinlp@gmail.com) 2020-04
@@ -21,68 +22,76 @@
 
 #include "Output.h"
 #include "Embedding.h"
-#include "../Utility.h"
 #include "../../niutensor/tensor/core/CHeader.h"
 
+/* the nmt namespace */
 namespace nmt
 {
 
+/* set the training flag */
+void OutputLayer::SetTrainingFlag(bool myIsTraining)
+{
+    isTraining = myIsTraining;
+}
+
 /* constructor */
-Output::Output()
+OutputLayer::OutputLayer()
 {
     devID = -1;
     vSize = -1;
     hSize = -1;
-    padIdx = -1;
+    isTraining = false;
+    shareDecInputOutputEmb = false;
 }
 
 /* de-constructor */
-Output::~Output()
+OutputLayer::~OutputLayer()
 {
+    if (!shareDecInputOutputEmb)
+        DelTensor(w);
 }
 
 /*
 initialize the model
 >> config - configurations of the model
 */
-void Output::InitModel(Config& config)
+void OutputLayer::InitModel(NMTConfig& config)
 {
-    devID = config.devID;
-    hSize = config.modelSize;
-    vSize = config.tgtVocabSize;
-    padIdx = config.padID;
+    SetTrainingFlag(config.training.isTraining);
+    devID = config.common.devID;
+    hSize = config.model.decEmbDim;
+    vSize = config.model.tgtVocabSize;
+    shareDecInputOutputEmb = config.model.shareDecInputOutputEmb;
 
-    InitTensor2D(&w, vSize, hSize, X_FLOAT, devID);
+    if (!shareDecInputOutputEmb) {
+        w = NewTensor2D(vSize, hSize, X_FLOAT, devID);
 
-    DTYPE v = 1.0F / (float)sqrt((float)hSize);
-    w.SetDataRandn(0, v);
-    for (int i = 0; i < hSize; i++) {
-        w.Set2D(0.0F, padIdx, i);
+        DTYPE v = 1.0F / (float)sqrt((float)hSize);
+        if (isTraining) {
+            w->SetDataRandn(0, v);
+        }
     }
 }
 
 /*
-make the network (redefined output tensor)
->> input - input tensor
->> output - output tensor
->> isTraining - whether it is used for training
+make the network
+>> input - the input tensor, (batch, srcLen, hiddenDim)
 >> normalized - whether ignore the log-softmax
+<< output - the output tensor, (batch, tgtLen, hiddenDim)
 */
-void Output::Make(XTensor& input, XTensor& output, bool isTraining, bool normalized)
+XTensor OutputLayer::Make(XTensor& input, bool normalized)
 {
-    XTensor& x = input;
+    XTensor output;
 
-    output = MMul(x, X_NOTRANS, w, X_TRANS);
+    output = MMul(input, X_NOTRANS, *w, X_TRANS);
 
     /* use softmax for training */
-    if (isTraining) {
-        output = Softmax(output, -1);
-        return;
-    }
+    if (w->enableGrad)
+        return Softmax(output, -1);
 
     /* normalize the output for beam search */
     if (normalized) {
-        auto dataType = output.dataType;
+        TENSOR_DATA_TYPE dataType = output.dataType;
         if (dataType == X_FLOAT16)
             output = ConvertDataType(output, X_FLOAT);
 
@@ -91,6 +100,7 @@ void Output::Make(XTensor& input, XTensor& output, bool isTraining, bool normali
         if (output.dataType != dataType)
             output = ConvertDataType(output, dataType);
     }
+    return output;
 }
 
-}
+} /* end of the nmt namespace */

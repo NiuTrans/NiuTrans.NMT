@@ -14,220 +14,224 @@
  * limitations under the License.
  */
 
+
 /*
- * $Created by: HU Chi (huchinlp@foxmail.com) 2019-04-03
- * $Modified by: HU Chi (huchinlp@gmail.com) 2020-06
+ * $Created by: HU Chi (huchinlp@gmail.com) 2021-06
  */
 
-#include <string>
-#include <vector>
-#include <cstdlib>
-#include <fstream>
+#include <iostream>
 #include <algorithm>
-
 #include "TranslateDataSet.h"
-#include "../Utility.h"
+#include "../../niutensor/tensor/XTensor.h"
 
-using namespace nmt;
+using namespace nts;
 
-namespace nts {
+/* the nmt namespace */
+namespace nmt {
 
-/* sort the input by length (in descending order) */
-void DataSet::SortInput() {
-    sort(inputBuffer.begin(), inputBuffer.end(), 
-        [](const Example& a, const Example& b) {
-            return a.values.size() > b.values.size();
-        });
-}
+/* transfrom a line to a sequence */
+Sample* TranslateDataset::LoadSample(string line)
+{
+    const string delimiter = " ";
 
-/* sort the output by id (in ascending order) */
-void DataSet::SortOutput() {
-    sort(outputBuffer.begin(), outputBuffer.end(),
-        [](const Example& a, const Example& b) {
-            return a.id < b.id;
-        });
+    /* load tokens and transform them to ids */
+    vector<string> srcTokens = SplitString(line, delimiter,
+                                           config->model.maxSrcLen - 1);
+
+    IntList* srcSeq = new IntList(int(srcTokens.size()));
+    Sample* sample = new Sample(srcSeq);
+
+    for (const string& token : srcTokens) {
+        if (srcVocab.token2id.find(token) == srcVocab.token2id.end())
+            srcSeq->Add(srcVocab.unkID);
+        else
+            srcSeq->Add(srcVocab.token2id.at(token));
+    }
+
+    /* the sequence should ends with EOS */
+    if(srcSeq->Get(-1) != srcVocab.eosID)
+        srcSeq->Add(srcVocab.eosID);
+    
+    return sample;
 }
 
 /*
-load data from the file to the buffer
+read data from a file to the buffer
 */
-void DataSet::LoadDataToBuffer()
+bool TranslateDataset::LoadBatchToBuf()
 {
-    string line;
-    inputBuffer.clear();
-    bufferUsed = 0;
-
     int id = 0;
-    const string tokenDelimiter = " ";
+    ClearBuf();
+    emptyLines.Clear();
 
-    while (getline(*fp, line)) {
-        vector<int> values;
+    string line;
 
-        /* load words and transform them to ids */
-        auto indices = SplitToPos(line, tokenDelimiter);
+    while (getline(*ifp, line) && id < config->common.bufSize) {
 
-        /* reserve the first maxSrcLen words if the input is too long */
-        size_t maxLen = indices.Size() > maxSrcLen ? maxSrcLen : indices.Size();
-
-        for (size_t i = 0; i < maxLen; i++) {
-            auto offset = (i != (indices.Size() - 1)) ?
-                indices[i + 1] - indices[i] - tokenDelimiter.size()
-                : line.size() - indices[i];
-            string word = line.substr(indices[i], offset);
-            if (srcVocab.word2id.find(word) == srcVocab.word2id.end())
-                values.emplace_back(unkID);
-            else
-                values.emplace_back(srcVocab.word2id.at(word));
+        /* handle empty lines */
+        if (line.size() > 0) {
+            Sample* sequence = LoadSample(line);
+            sequence->index = id;
+            buf->Add(sequence);
+        }
+        else {
+            emptyLines.Add(id);
         }
 
-        /* make sure that the sequence ends with EOS */
-        if (values.size() != 0 && values.back() != endID)
-            values.emplace_back(endID);
-
-        Example example;
-        example.id = id;
-        example.values = values;
-        if (values.size() != 0)
-            inputBuffer.emplace_back(example);
-        else
-            emptyLines.emplace_back(id);
         id++;
     }
-    fp->close();
 
-    SortInput();
+    /* hacky code to solve the issue with fp16 */
+    appendEmptyLine = false;
+    if (id > 0 && id % 2 != 0) {
+        line = "EMPTY";
+        Sample* sequence = LoadSample(line);
+        sequence->index = id++;
+        buf->Add(sequence);
+        appendEmptyLine = true;
+    }
 
-    XPRINT1(0, stderr, "[INFO] loaded %d sentences\n", id);
+    SortBySrcLengthDescending();
+    XPRINT1(0, stderr, "[INFO] loaded %d sentences\n", appendEmptyLine ? id - 1 : id);
+
+    return true;
+}
+
+/* constructor */
+TranslateDataset::TranslateDataset()
+{
+    ifp = NULL;
+    appendEmptyLine = false;
 }
 
 /*
-load a mini-batch to the device (for translating)
->> batchEnc - a tensor to store the batch of input
->> paddingEnc - a tensor to store the batch of paddings
->> minSentBatch - the minimum number of sentence batch
->> batchSize - the maxium number of words in a batch
->> devID - the device id, -1 for the CPU
-<< indices of the sentences
+load a batch of sequences from the buffer to the host for translating
+>> inputs - a list of input tensors (batchEnc and paddingEnc)
+   batchEnc - a tensor to store the batch of input
+   paddingEnc - a tensor to store the batch of paddings
+>> info - the total length and indices of sequences
 */
-UInt64List DataSet::LoadBatch(XTensor* batchEnc, XTensor* paddingEnc,
-                              size_t minSentBatch, size_t batchSize, int devID)
+bool TranslateDataset::GetBatchSimple(XList* inputs, XList* info)
 {
-    size_t realBatchSize = minSentBatch;
+    int realBatchSize = 1;
 
-    /* get the maximum sentence length in a mini-batch */
-    size_t maxLen = inputBuffer[bufferUsed].values.size();
+    /* get the maximum sequence length in a mini-batch */
+    Sample* longestsample = (Sample*)(buf->Get(bufIdx));
+    int maxLen = int(longestsample->srcSeq->Size());
 
-    /* dynamic batching for sentences */
-    //while ((realBatchSize < (inputBuffer.Size() - bufferUsed))
-    //    && (realBatchSize * maxLen < batchSize)) {
-    //    realBatchSize++;
-    //}
-
-    /* real batch size */
-    if ((inputBuffer.size() - bufferUsed) < realBatchSize) {
-        realBatchSize = inputBuffer.size() - bufferUsed;
+    /* we choose the max-token strategy to maximize the throughput */
+    while (realBatchSize * maxLen * config->translation.beamSize < config->common.wBatchSize
+           && realBatchSize < config->common.sBatchSize) {
+        realBatchSize++;
     }
 
-    CheckNTErrors(maxLen != 0, "invalid length");
+    realBatchSize = MIN(realBatchSize, config->common.sBatchSize);
+
+    /* make sure the batch size is valid */
+    realBatchSize = MIN(int(buf->Size()) - bufIdx, realBatchSize);
+    realBatchSize = MAX(2 * (realBatchSize / 2), realBatchSize % 2);
+
+    CheckNTErrors(maxLen != 0, "Invalid length");
 
     int* batchValues = new int[realBatchSize * maxLen];
     float* paddingValues = new float[realBatchSize * maxLen];
 
     for (int i = 0; i < realBatchSize * maxLen; i++) {
-        batchValues[i] = padID;
+        batchValues[i] = srcVocab.padID;
         paddingValues[i] = 1.0F;
     }
-
-    size_t curSrc = 0;
+    
+    int* totalLength = (int*)(info->Get(0));
+    IntList* indices = (IntList*)(info->Get(1));
+    *totalLength = 0;
+    indices->Clear();
 
     /* right padding */
-    UInt64List infos;
-    size_t totalLength = 0;
-
+    int curSrc = 0;
     for (int i = 0; i < realBatchSize; ++i) {
-        infos.Add(inputBuffer[bufferUsed + i].id);
-        totalLength += inputBuffer[bufferUsed + i].values.size();
+        Sample* sequence = (Sample*)(buf->Get(bufIdx + i));
+        IntList* src = sequence->srcSeq;
+        indices->Add(sequence->index);
+        *totalLength += src->Size();
 
         curSrc = maxLen * i;
-        for (int j = 0; j < inputBuffer[bufferUsed + i].values.size(); j++)
-            batchValues[curSrc++] = inputBuffer[bufferUsed + i].values[j];
-        while (curSrc < maxLen * size_t(i + 1ULL))
-            paddingValues[curSrc++] = 0;
+        memcpy(&(batchValues[curSrc]), src->items, sizeof(int) * src->Size());
+        curSrc += src->Size();
+
+        while (curSrc < maxLen * (i + 1))
+            paddingValues[curSrc++] = 0.0F;
     }
-    infos.Add(totalLength);
 
-    InitTensor2D(batchEnc, realBatchSize, maxLen, X_INT, devID);
-    InitTensor2D(paddingEnc, realBatchSize, maxLen, X_FLOAT, devID);
+    bufIdx += realBatchSize;
 
-    bufferUsed += realBatchSize;
-
+    XTensor* batchEnc = (XTensor*)(inputs->Get(0));
+    XTensor* paddingEnc = (XTensor*)(inputs->Get(1));
+    InitTensor2D(batchEnc, realBatchSize, maxLen, X_INT, config->common.devID);
+    InitTensor2D(paddingEnc, realBatchSize, maxLen, config->common.useFP16 ? X_FLOAT : X_FLOAT, config->common.devID);
     batchEnc->SetData(batchValues, batchEnc->unitNum);
     paddingEnc->SetData(paddingValues, paddingEnc->unitNum);
 
     delete[] batchValues;
     delete[] paddingValues;
 
-    return infos;
+    return true;
 }
 
 /*
-the constructor of DataSet
->> dataFile - path of the data file
->> srcVocabFN - path of the source vocab file
->> tgtVocabFN - path of the target vocab file
+constructor
+>> myConfig - configuration of the NMT system
+>> notUsed - as it is
 */
-void DataSet::Init(const char* dataFile, const char* srcVocabFN, const char* tgtVocabFN)
+void TranslateDataset::Init(NMTConfig& myConfig, bool notUsed)
 {
-    fp = new ifstream(dataFile);
-    CheckNTErrors(fp->is_open(), "Can not open the test data");
-    bufferUsed = 0;
+    config = &myConfig;
 
-    CheckNTErrors(strcmp(srcVocabFN, "") != 0, "missing source vocab file");
-    CheckNTErrors(strcmp(tgtVocabFN, "") != 0, "missing target vocab file");
+    /* load the source and target vocabulary */
+    srcVocab.Load(config->common.srcVocabFN);
 
-    srcVocab.Load(srcVocabFN);
-
-    /* share source and target vocabs */
-    if (strcmp(srcVocabFN, tgtVocabFN) == 0) {
-        XPRINT(0, stderr, "[INFO] share source and target vocabs \n");
+    /* share the source and target vocabulary */
+    if (strcmp(config->common.srcVocabFN, config->common.tgtVocabFN) == 0)
         tgtVocab.CopyFrom(srcVocab);
-    }
-    else {
-        tgtVocab.Load(tgtVocabFN);
-    }
+    else
+        tgtVocab.Load(config->common.tgtVocabFN);
 
-    LoadDataToBuffer();
+    srcVocab.SetSpecialID(config->model.sos, config->model.eos,
+                          config->model.pad, config->model.unk);
+    tgtVocab.SetSpecialID(config->model.sos, config->model.eos,
+                          config->model.pad, config->model.unk);
+
+    /* translate the content in a file */
+    if (strcmp(config->translation.inputFN, "") != 0) {
+        ifp = new ifstream(config->translation.inputFN);
+        CheckNTErrors(ifp, "Failed to open the input file");
+    }
+    /* translate the content in stdin */
+    else
+        ifp = &cin;
+
+    LoadBatchToBuf();
+}
+
+/* this is a place-holder function to avoid errors */
+Sample* TranslateDataset::LoadSample()
+{
+    return nullptr;
 }
 
 /* check if the buffer is empty */
-bool DataSet::IsEmpty() {
-    if (bufferUsed < inputBuffer.size())
+bool TranslateDataset::IsEmpty() {
+    if (bufIdx < buf->Size())
         return false;
     return true;
 }
 
-/* dump the translation to a file */
-void DataSet::DumpRes(const char* ofn)
-{
-    ofstream ofile(ofn, ios::out);
-
-    for (const auto& tgtSent : outputBuffer) {
-        for (const auto& w : tgtSent.values) {
-            if (w < 4)
-                break;
-            ofile << tgtVocab.id2word[w] << " ";
-        }
-        ofile << "\n";
-    }
-
-    ofile.close();
-}
-
 /* de-constructor */
-DataSet::~DataSet()
+TranslateDataset::~TranslateDataset()
 {
-    /* release the file */
-    delete fp;
+    if (ifp != NULL && strcmp(config->translation.inputFN, "") != 0) {
+        ((ifstream*)(ifp))->close();
+        delete ifp;
+    }
 }
 
-}
+} /* end of the nmt namespace */

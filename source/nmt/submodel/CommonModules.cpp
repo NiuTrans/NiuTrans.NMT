@@ -14,19 +14,32 @@
  * limitations under the License.
  */
 
+
 /*
- * An implementation of the NMT system. 
+ * $Created by: Bei Li (libei_neu@outlook.com) 2020-02-05
+ * This file includes some common modules of the Transformer model
  */
 
-#ifndef __NMT_H__
-#define __NMT_H__
+#include "CommonModules.h"
 
+/* the nmt namespace */
 namespace nmt
 {
 
-/* entrance of the program */
-int NMTMain(int argc, const char** argv);
-
+/* 
+flexible layer normalization for the Transformer 
+>> input - input tensor
+>> ln - the layernorm network
+>> prenorm - whether we use prenorm or not
+>> before - whether we use layernorm before attention/ffn
+>> after - whether we use layernorm after attention/ffn
+*/
+XTensor LN(XTensor& input, LayerNorm& ln, bool prenorm, bool before, bool after)
+{
+    if (after ^ prenorm)
+        return ln.Run(input);
+    else
+        return input;
 }
 
-#endif
+} /* end of the nmt namespace */

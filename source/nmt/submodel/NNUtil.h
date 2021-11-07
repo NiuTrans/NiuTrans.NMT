@@ -14,24 +14,27 @@
  * limitations under the License.
  */
 
- /*
-  * $Created by: Bei Li (libei_neu@outlook.com) 2020-02-03
-  */
 
-#ifndef __COMMONMODULE_H__
-#define __COMMONMODULE_H__
+/*
+ * $Created by: HU Chi (huchinlp@foxmail.com) 2020-03-21
+ */
 
-#include "LayerNorm.h"
-#include "CommonModules.h"
+#ifndef __NNUTIL_H__
+#define __NNUTIL_H__
+
+#include "../../niutensor/tensor/XGlobal.h"
+#include "../../niutensor/tensor/core/CHeader.h"
+#include "../../niutensor/tensor/function/FHeader.h"
 
 using namespace nts;
 
+/* the nmt namespace */
 namespace nmt
 {
 
-/* the layer normalization module to control pre-norm or post-norm*/
-XTensor LayerNorm(XTensor& input, LN& ln, bool prenorm, bool before, bool after);
+/* the gather function for tensor with any dimension */
+XTensor AutoGather(XTensor& src, XTensor& index);
 
-}
+} /* end of the nmt namespace */
 
-#endif
+#endif /* __NNUTIL_H__ */

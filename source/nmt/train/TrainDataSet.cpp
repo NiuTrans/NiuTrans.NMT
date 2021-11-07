@@ -1,4 +1,4 @@
-﻿/* NiuTrans.NMT - an open-source neural machine translation system.
+/* NiuTrans.NMT - an open-source neural machine translation system.
  * Copyright (C) 2020 NiuTrans Research. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,232 +14,112 @@
  * limitations under the License.
  */
 
+
 /*
- * $Created by: HU Chi (huchinlp@foxmail.com) 2020-08-09
- * $Updated by: CAO Hang and Wu Siming 2020-12-13
+ * $Created by: HU Chi (huchinlp@gmail.com) 2021-06
  */
 
-#include <string>
-#include <vector>
 #include <cstdlib>
-#include <fstream>
 #include <algorithm>
 
 #include "TrainDataSet.h"
-#include "../Utility.h"
-#include "../translate/Vocab.h"
 
-using namespace nmt;
 
-namespace nts {
+/* the nmt namespace */
+namespace nmt {
 
-/* get the maximum source sentence length in a range */
-int TrainDataSet::MaxSrcLen(int begin, int end) {
-    CheckNTErrors((end > begin) && (begin >= 0) && (end <= buffer.count), "Invalid range");
-    int maxLen = 0;
-    for (int i = begin; i < end; i++) {
-        maxLen = MAX(buffer[i]->srcSent.Size(), maxLen);
+/* shuffle buckets by their keys */
+void TrainDataSet::ShuffleBuckets() {
+
+    /* assign random keys for buckets */
+    int keyIdx = 0;
+    std::random_shuffle(randomKeys.items, randomKeys.items + randomKeys.Size());
+
+    while (bufIdx < buf->Size()) {
+        int bucketKey = ((Sample*)(buf->Get(bufIdx)))->bucketKey;
+        while ((bufIdx < buf->Size()) &&
+            (((Sample*)(buf->Get(bufIdx)))->bucketKey == bucketKey)) {
+            ((Sample*)(buf->Get(bufIdx)))->bucketKey = randomKeys[keyIdx];
+            bufIdx++;
+        }
+        keyIdx++;
     }
-    return maxLen;
-}
 
-/* get the maximum target sentence length in a range */
-int TrainDataSet::MaxTgtLen(int begin, int end) {
-    CheckNTErrors(end > begin, "Invalid range");
-    int maxLen = 0;
-    for (int i = begin; i < end; i++) {
-        maxLen = MAX(buffer[i]->tgtSent.Size(), maxLen);
-    }
-    return maxLen;
-}
-
-/* sort the dataset by source sentence length (in descending order) */
-void TrainDataSet::SortBySrcLength() {
-    stable_sort(buffer.items, buffer.items + buffer.count,
-                [](TrainExample* a, TrainExample* b) {
-                    return (a->srcSent.Size())
-                         < (b->srcSent.Size());
-                });
-}
-
-/* sort the dataset by target sentence length (in descending order) */
-void TrainDataSet::SortByTgtLength() {
-    stable_sort(buffer.items, buffer.items + buffer.count,
-                [](TrainExample* a, TrainExample* b) {
-                    return (a->tgtSent.Size())
-                         < (b->tgtSent.Size());
-                });
-}
-
-/* sort buckets by key (in descending order) */
-void TrainDataSet::SortBuckets() {
-    stable_sort(buffer.items, buffer.items + buffer.count,
-        [](TrainExample* a, TrainExample* b) {
-            return a->bucketKey < b->bucketKey;
+    /* sort buckets by the previous keys */
+    sort(buf->items, buf->items + buf->count,
+        [](void* a, void* b) {
+            return ((Sample*)(a))->bucketKey <
+                ((Sample*)(b))->bucketKey;
         });
-}
 
-/* shuffle buckets */
-void TrainDataSet::ShuffleBuckets()
-{
-    /* assign random keys for different buckets */
-    int i = 0;
-    int key = 0;
-
-    while (i < buffer.count - 1) {
-
-        /* determine the range of a bucket */
-        key = buffer[i]->bucketKey;
-        int cur = i;
-        while ((buffer[i]->bucketKey == key) && (i < (buffer.count - 1))) {
-            i++;
-        }
-
-        /* update the bucket key */
-        key = rand();
-        while (cur < i) {
-            buffer[cur++]->bucketKey = key;
-        }
-    }
-
-    SortBuckets();
+    /* reset the buffer index */
+    bufIdx = 0;
 }
 
 /*
-sort the output by key in a range (in descending order)
->> begin - the first index of the range
->> end - the last index of the range
+load samples from a file into the buffer
 */
-void TrainDataSet::SortInBucket(int begin, int end) {
-    sort(buffer.items + begin, buffer.items + end,
-        [](TrainExample* a, TrainExample* b) {
-            return (a->key < b->key);
-        });
+bool TrainDataSet::LoadBatchToBuf()
+{
+    int n = 0;
+
+    while (n < config->common.bufSize) {
+        Sample* sample = LoadSample();
+        buf->Add(sample);
+        n++;
+    }
+    LOG("loaded %d samples", n);
+
+    /* group samples into buckets */
+    SortByTgtLengthAscending();
+    SortBySrcLengthAscending();
+
+    /* build buckets for training */
+    if (isTraining)
+        BuildBucket();
+
+    return true;
 }
 
 /*
-load all data from a file to the buffer
-training data format (binary):
-first 8 bit: number of sentence pairs
-subsequent segements:
-source sentence length (4 bit)
-target sentence length (4 bit)
-source tokens (4 bit per token)
-target tokens (4 bit per token)
+load a mini-batch to a device
+>> inputs - the list to store input tensors
+>> golds - the list to store gold tensors
 */
-void TrainDataSet::LoadDataToBuffer()
+bool TrainDataSet::GetBatchSimple(XList* inputs, XList* golds)
 {
-    buffer.Clear();
-    curIdx = 0;
-
-    int id = 0;
-    uint64_t sentNum = 0;
-
-    int srcVocabSize = 0;
-    int tgtVocabSize = 0;
-    fread(&srcVocabSize, sizeof(srcVocabSize), 1, fp);
-    fread(&tgtVocabSize, sizeof(tgtVocabSize), 1, fp);
-
-    fread(&sentNum, sizeof(uint64_t), 1, fp);
-    CheckNTErrors(sentNum > 0, "Invalid sentence pairs number");
-
-    while (id < sentNum) {
-        int srcLen = 0;
-        int tgtLen = 0;
-        fread(&srcLen, sizeof(int), 1, fp);
-        fread(&tgtLen, sizeof(int), 1, fp);
-        CheckNTErrors(srcLen > 0, "Invalid source sentence length");
-        CheckNTErrors(tgtLen > 0, "Invalid target sentence length");
-
-        IntList srcSent;
-        IntList tgtSent;
-        srcSent.ReadFromFile(fp, srcLen);
-        tgtSent.ReadFromFile(fp, tgtLen);
-
-        /* reserve the first maxSrcLen words if the source is too long */
-        if (srcLen > maxSrcLen) {
-            for (int i = maxSrcLen; i < srcLen; i++)
-                srcSent.Remove(maxSrcLen);
-        }
-
-        /* reserve the first maxTgtLen words if the target is too long */
-        if (tgtLen > maxTgtLen) {
-            for (int i = maxTgtLen; i < tgtLen; i++)
-                srcSent.Remove(maxTgtLen);
-        }
-
-        TrainExample* example = new TrainExample;
-        example->id = id++;
-        example->key = MAX(srcSent.count, tgtSent.count);
-        example->srcSent = srcSent;
-        example->tgtSent = tgtSent;
-
-        buffer.Add(example);
+    if (bufIdx == buf->Size()) {
+        if (isTraining)
+            ShuffleBuckets();
+        else
+            bufIdx = 0;
     }
 
-    fclose(fp);
+    wc = 0;
+    sc = isTraining ? GetBucket() : config->common.sBatchSize;
+    sc = MIN(sc, buf->Size() - bufIdx);
 
-    XPRINT1(0, stderr, "[INFO] loaded %d sentences\n", id);
-}
-
-/*
-load a mini-batch to a device (for training)
->> batchEnc - a tensor to store the batch of encoder input
->> paddingEnc - a tensor to store the batch of encoder paddings
->> batchDec - a tensor to store the batch of decoder input
->> paddingDec - a tensor to store the batch of decoder paddings
->> label - a tensor to store the label of input
->> minSentBatch - the minimum number of sentence batch
->> batchSize - the maxium number of words in a batch
->> devID - the device id, -1 for the CPU
-<< return - number of target tokens and sentences
-*/
-UInt64List TrainDataSet::LoadBatch(XTensor* batchEnc, XTensor* paddingEnc,
-                                   XTensor* batchDec, XTensor* paddingDec, XTensor* label,
-                                   int minSentBatch, int batchSize, int devID)
-{
-    UInt64List info;
-    int srcTokenNum = 0;
-    int tgtTokenNum = 0;
-    int realBatchSize = 0;
-
-    /* use a fixed batch size for validation */
-    if (!isTraining)
-        realBatchSize = minSentBatch;
-
-    /* dynamic batching for sentences, enabled when the dataset is used for training */
-    if (isTraining) {
-        int bucketKey = buffer[curIdx]->bucketKey;
-        while ((realBatchSize < (buffer.Size() - curIdx)) &&
-            (buffer[curIdx + realBatchSize]->bucketKey == bucketKey)) {
-            realBatchSize++;
-        }
-    }
-
-    realBatchSize = MIN(realBatchSize, (buffer.Size() - curIdx));
-    CheckNTErrors(realBatchSize > 0, "Invalid batch size");
-
-    /* get the maximum target sentence length in a mini-batch */
-    int maxSrcLen = MaxSrcLen(curIdx, curIdx + realBatchSize);
-    int maxTgtLen = MaxTgtLen(curIdx, curIdx + realBatchSize);
+    /* get the maximum sentence length in a mini-batch */
+    int maxSrcLen = MaxSrcLen(bufIdx, bufIdx + sc);
+    int maxTgtLen = MaxTgtLen(bufIdx, bufIdx + sc);
 
     CheckNTErrors(maxSrcLen > 0, "Invalid source length for batching");
     CheckNTErrors(maxTgtLen > 0, "Invalid target length for batching");
 
-    int* batchEncValues = new int[realBatchSize * maxSrcLen];
-    float* paddingEncValues = new float[realBatchSize * maxSrcLen];
+    int* batchEncValues = new int[sc * maxSrcLen];
+    float* paddingEncValues = new float[sc * maxSrcLen];
 
-    int* labelVaues = new int[realBatchSize * maxTgtLen];
-    int* batchDecValues = new int[realBatchSize * maxTgtLen];
-    float* paddingDecValues = new float[realBatchSize * maxTgtLen];
+    int* labelVaues = new int[sc * maxTgtLen];
+    int* batchDecValues = new int[sc * maxTgtLen];
+    float* paddingDecValues = new float[sc * maxTgtLen];
 
-    for (int i = 0; i < realBatchSize * maxSrcLen; i++) {
-        batchEncValues[i] = padID;
+    for (int i = 0; i < sc * maxSrcLen; i++) {
+        batchEncValues[i] = config->model.pad;
         paddingEncValues[i] = 1.0F;
     }
-    for (int i = 0; i < realBatchSize * maxTgtLen; i++) {
-        batchDecValues[i] = padID;
-        labelVaues[i] = padID;
+    for (int i = 0; i < sc * maxTgtLen; i++) {
+        batchDecValues[i] = config->model.pad;
+        labelVaues[i] = config->model.pad;
         paddingDecValues[i] = 1.0F;
     }
 
@@ -251,36 +131,41 @@ UInt64List TrainDataSet::LoadBatch(XTensor* batchEnc, XTensor* paddingEnc,
     batchDec: begin with SOS (right padding)
     label:    end with EOS (right padding)
     */
-    for (int i = 0; i < realBatchSize; ++i) {
+    for (int i = 0; i < sc; ++i) {
 
-        srcTokenNum += buffer[curIdx + i]->srcSent.Size();
-        tgtTokenNum += buffer[curIdx + i]->tgtSent.Size();
+        Sample* sample = (Sample*)(buf->Get(bufIdx + i));
+        wc += int(sample->tgtSeq->Size());
 
         curSrc = maxSrcLen * i;
-        for (int j = 0; j < buffer[curIdx + i]->srcSent.Size(); j++) {
-            batchEncValues[curSrc++] = buffer[curIdx + i]->srcSent[j];
-        }
+        for (int j = 0; j < int(sample->srcSeq->Size()); j++)
+            batchEncValues[curSrc++] = sample->srcSeq->Get(j);
 
         curTgt = maxTgtLen * i;
-        for (int j = 0; j < buffer[curIdx + i]->tgtSent.Size(); j++) {
+        for (int j = 0; j < int(sample->tgtSeq->Size()); j++) {
             if (j > 0)
-                labelVaues[curTgt - 1] = buffer[curIdx + i]->tgtSent[j];
-            batchDecValues[curTgt++] = buffer[curIdx + i]->tgtSent[j];
+                labelVaues[curTgt - 1] = sample->tgtSeq->Get(j);
+            batchDecValues[curTgt++] = sample->tgtSeq->Get(j);
         }
-        labelVaues[curTgt - 1] = endID;
+        labelVaues[curTgt - 1] = config->model.eos;
         while (curSrc < maxSrcLen * (i + 1))
             paddingEncValues[curSrc++] = 0;
         while (curTgt < maxTgtLen * (i + 1))
             paddingDecValues[curTgt++] = 0;
     }
 
-    InitTensor2D(batchEnc, realBatchSize, maxSrcLen, X_INT, devID);
-    InitTensor2D(paddingEnc, realBatchSize, maxSrcLen, X_FLOAT, devID);
-    InitTensor2D(batchDec, realBatchSize, maxTgtLen, X_INT, devID);
-    InitTensor2D(paddingDec, realBatchSize, maxTgtLen, X_FLOAT, devID);
-    InitTensor2D(label, realBatchSize, maxTgtLen, X_INT, devID);
+    XTensor * batchEnc = ((TensorList*)(inputs))->Get(0);
+    XTensor * paddingEnc = ((TensorList*)(inputs))->Get(1);
+    XTensor * batchDec = ((TensorList*)(golds))->Get(0);
+    XTensor * paddingDec = ((TensorList*)(golds))->Get(1);
+    XTensor * label = ((TensorList*)(golds))->Get(2);
 
-    curIdx += realBatchSize;
+    InitTensor2D(batchEnc, sc, maxSrcLen, X_INT);
+    InitTensor2D(paddingEnc, sc, maxSrcLen, X_FLOAT);
+    InitTensor2D(batchDec, sc, maxTgtLen, X_INT);
+    InitTensor2D(paddingDec, sc, maxTgtLen, X_FLOAT);
+    InitTensor2D(label, sc, maxTgtLen, X_INT);
+
+    bufIdx += sc;
 
     batchEnc->SetData(batchEncValues, batchEnc->unitNum);
     paddingEnc->SetData(paddingEncValues, paddingEnc->unitNum);
@@ -294,63 +179,16 @@ UInt64List TrainDataSet::LoadBatch(XTensor* batchEnc, XTensor* paddingEnc,
     delete[] paddingDecValues;
     delete[] labelVaues;
 
-    info.Add(tgtTokenNum);
-    info.Add(realBatchSize);
-    return info;
-}
-
-/*
-the constructor of DataSet
->> dataFile - path of the data file
->> bucketSize - size of the bucket to keep similar length sentence pairs
->> training - indicates whether it is used for training
-*/
-void TrainDataSet::Init(const char* dataFile, int myBucketSize, bool training)
-{
-    fp = fopen(dataFile, "rb");
-    CheckNTErrors(fp, "can not open the training file");
-    curIdx = 0;
-    bucketSize = myBucketSize;
-    isTraining = training;
-
-    LoadDataToBuffer();
-
-    SortByTgtLength();
-
-    SortBySrcLength();
-
-    if (isTraining) {
-        BuildBucket();
-    }
-
-}
-
-/* check if the buffer is empty */
-bool TrainDataSet::IsEmpty() {
-    if (curIdx < buffer.Size())
-        return false;
     return true;
 }
 
-/* reset the buffer */
-void TrainDataSet::ClearBuf()
-{
-    curIdx = 0;
-
-    /* make different batches in different epochs */
-    if (isTraining)
-        ShuffleBuckets();
-}
-
-/* group data with similar length into buckets */
+/* group samples with similar length into buckets */
 void TrainDataSet::BuildBucket()
 {
     int idx = 0;
 
-    IntList list;
-
-    /* build buckets by the length of source and target sentence */
-    while (idx < buffer.Size()) {
+    /* build buckets by the length of source and target sentences */
+    while (idx < int(buf->Size())) {
 
         /* sentence number in a bucket */
         int sentNum = 1;
@@ -360,12 +198,12 @@ void TrainDataSet::BuildBucket()
         int maxTgtLen = MaxTgtLen(idx, idx + sentNum);
         int maxLen = MAX(maxSrcLen, maxTgtLen);
 
-        /* max sentence number in a bucket */
+        /* the maximum sentence number in a bucket */
         const int MAX_SENT_NUM = 5120;
 
-        while ((sentNum < (buffer.count - idx))
+        while ((sentNum < (buf->count - idx))
             && (sentNum < MAX_SENT_NUM)
-            && (sentNum * maxLen <= bucketSize)) {
+            && (sentNum * maxLen <= config->common.bucketSize)) {
             sentNum++;
             maxSrcLen = MaxSrcLen(idx, idx + sentNum);
             maxTgtLen = MaxTgtLen(idx, idx + sentNum);
@@ -373,35 +211,111 @@ void TrainDataSet::BuildBucket()
         }
 
         /* make sure the number is valid */
-        if ((sentNum)*maxLen > bucketSize || sentNum >= MAX_SENT_NUM) {
+        if ((sentNum) * maxLen > config->common.bucketSize || sentNum >= MAX_SENT_NUM) {
             sentNum--;
             sentNum = max(8 * (sentNum / 8), sentNum % 8);
         }
-        if ((buffer.Size() - idx) < sentNum)
-            sentNum = buffer.Size() - idx;
+        if ((int(buf->Size()) - idx) < sentNum)
+            sentNum = int(buf->Size()) - idx;
 
         /* assign the same key for items in a bucket */
-        int randomKey = rand();
-        for (int i = 0; i < sentNum; i++) {
-            buffer[idx + i]->bucketKey = randomKey;
-        }
+        for (int i = 0; i < sentNum; i++)
+            ((Sample*)(buf->Get(idx + i)))->bucketKey = idx;
 
+        randomKeys.Add(idx);
         idx += sentNum;
-        list.Add(sentNum);
     }
 
-    LOG("number of batches: %d", list.count);
-
+    /* shuffle buckets */
     ShuffleBuckets();
+}
+
+/* find the sentences in a bucket */
+inline int TrainDataSet::GetBucket()
+{
+    int sent = 0;
+    int bucketKey = ((Sample*)(buf->Get(bufIdx)))->bucketKey;
+
+    while ((sent < (int(buf->Size()) - bufIdx)) &&
+          (((Sample*)(buf->Get(bufIdx + sent)))->bucketKey == bucketKey)) {
+        sent++;
+    }
+
+    sent = MIN(sent, (int(buf->Size()) - bufIdx));
+    CheckNTErrors(sent > 0, "Invalid batch size");
+
+    return sent;
+}
+
+/* start the process */
+bool TrainDataSet::Start()
+{
+    return false;
+}
+
+/* end the process */
+bool TrainDataSet::End()
+{
+    return true;
+}
+
+/* load a sample from the training file */
+Sample* TrainDataSet::LoadSample()
+{
+    int srcLen;
+    int tgtLen;
+
+    fread(&srcLen, sizeof(srcLen), 1, fp);
+    fread(&tgtLen, sizeof(tgtLen), 1, fp);
+
+    CheckNTErrors(srcLen > 0, "Invalid source sentence length");
+    CheckNTErrors(tgtLen > 0, "Invalid target sentence length");
+
+    IntList* srcSent = new IntList(srcLen);
+    IntList* tgtSent = new IntList(tgtLen);
+    srcSent->ReadFromFile(fp, srcLen);
+    tgtSent->ReadFromFile(fp, tgtLen);
+
+    Sample* sample = new Sample(srcSent, tgtSent, 0);
+    
+    return sample;
+}
+
+/*
+the constructor of TrainDataSet
+>> cfg - the configuration of NMT system
+>> isTrainDataset - indicates whether it is used for training
+*/
+void TrainDataSet::Init(NMTConfig& cfg, bool isTrainDataset)
+{
+    bufIdx = 0;
+    config = &cfg;
+    isTraining = isTrainDataset;
+
+    if (isTraining)
+        fp = fopen(config->training.trainFN, "rb");
+    else
+        fp = fopen(config->training.validFN, "rb");
+    CheckNTErrors(fp, "Failed to open the training/validation file");
+
+    /* skip the meta information */
+    int meta_info[6];
+    fread(meta_info, sizeof(*meta_info), 6, fp);
+
+    /* load the number of training samples */
+    fread(&sampleNum, sizeof(sampleNum), 1, fp);
+    CheckNTErrors(sampleNum > 0, "There is no training/validation data");
+
+    /* reset the buffer size */
+    config->common.bufSize = sampleNum;
+
+    LoadBatchToBuf();
 }
 
 /* de-constructor */
 TrainDataSet::~TrainDataSet()
 {
-
-    /* release the buffer */
-    for (int i = 0; i < buffer.Size(); i++)
-        delete buffer[i];
+    fclose(fp);
 }
 
-}
+} /* end of the nmt namespace */

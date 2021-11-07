@@ -1,6 +1,6 @@
 '''
-Convert the format of a model.
-Usage: python3 FormatConverter.py -src <raw_model> -tgt <new_model>
+Convert the format of a NiuTrans.NMT model (FP32 <-> FP16).
+Usage: python3 FormatConverter.py -input <raw_model> -output <new_model>
 Help: python3 FormatConverter.py -h
 '''
 
@@ -11,19 +11,16 @@ from struct import pack
 from struct import unpack
 
 parser = argparse.ArgumentParser(
-    description='The format converter for NiuTrans.NMT')
+    description='The format converter for NiuTrans.NMT (FP32 <-> FP16)')
 parser.add_argument('-input', help='Path of the raw model file',
                     type=str, default='')
 parser.add_argument('-output', help='Path of the new model file',
                     type=str, default='')
-parser.add_argument('-format', help='Target storage format, FP16 (Default) or FP32', type=str, default='fp16')
+parser.add_argument(
+    '-format', help='Target storage format, FP16 (Default) or FP32', type=str, default='fp16')
 args = parser.parse_args()
 args.format = args.format.lower()
 
-META_INFO_NUM = 12
-
-meta_infos = None
-parameters = None
 
 if args.format == 'fp32':
     PARAM_LEN = 2
@@ -33,7 +30,9 @@ else:
     raise NotImplementedError("Unsupported data type")
 
 with open(args.input, "rb") as f:
-    meta_infos = f.read(META_INFO_NUM * 4)
+
+    # meta infomation includes 11 booleans and 18 integers, detailed in Model.cpp:InitModel()
+    meta_info = f.read(11 * 1 + 18 * 4)
     data = f.read()
     if args.format == 'fp32':
         values = unpack('e' * (len(data) // PARAM_LEN), data)
@@ -43,7 +42,7 @@ with open(args.input, "rb") as f:
     parameters = np.array(values)
 
 with open(args.output, "wb") as f:
-    f.write(meta_infos)
+    f.write(meta_info)
     if args.format == 'fp32':
         values = pack("f" * len(parameters), *(parameters.astype(np.float32)))
     elif args.format == 'fp16':

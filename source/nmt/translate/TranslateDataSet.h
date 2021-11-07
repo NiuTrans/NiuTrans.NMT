@@ -14,53 +14,35 @@
  * limitations under the License.
  */
 
+
 /*
- * $Created by: HU Chi (huchinlp@foxmail.com) 2019-04-03
- * $Modified by: HU Chi (huchinlp@gmail.com) 2020-06
+ * Here we define the batch manager for translation.
+ * 
+ * $Created by: HU Chi (huchinlp@gmail.com) 2021-06
  */
 
-#ifndef __DATASET_H__
-#define __DATASET_H__
+#ifndef __TRANSLATEDATASET_H__
+#define __TRANSLATEDATASET_H__
 
-#include <cstdio>
-#include <vector>
+#include <string>
 #include <fstream>
 #include "Vocab.h"
-
-#include "../../niutensor/tensor/XList.h"
-#include "../../niutensor/tensor/XTensor.h"
-#include "../../niutensor/tensor/XGlobal.h"
+#include "../DataSet.h"
 
 using namespace std;
 
-namespace nts {
+/* the nmt namespace */
+namespace nmt {
 
-/* the struct of tokenized input */
-struct Example {
-
-    int id;
-
-    vector<int> values;
-};
-
-/* A `DataSet` is associated with a file which contains variable length data.*/
-struct DataSet {
-
+/* The translation batch manager for NMT. */
+class TranslateDataset : public DataSetBase {
 public:
-    /* the data buffer */
-    vector<Example> inputBuffer;
 
-    /* a list of empty line number */
-    vector<int> emptyLines;
+    /* whether append an empty line to the buffer */
+    bool appendEmptyLine;
 
-    /* the result buffer */
-    vector<Example> outputBuffer;
-
-    /* the pointer to file stream */
-    ifstream* fp;
-
-    /* size of used data in buffer */
-    size_t bufferUsed;
+    /* the indices of empty lines */
+    IntList emptyLines;
 
     /* the source vocabulary */
     Vocab srcVocab;
@@ -68,48 +50,35 @@ public:
     /* the target vocabulary */
     Vocab tgtVocab;
 
-    /* the maximum length of an input sequence */
-    int maxSrcLen;
-
-    /* the padding id */
-    int padID;
-
-    /* the unk id */
-    int unkID;
-
-    /* start symbol */
-    int startID;
-
-    /* end symbol */
-    int endID;
+    /* the input file stream */
+    istream* ifp;
 
 public:
-
-    /* sort the input by length */
-    void SortInput();
-
-    /* reorder the output by ids */
-    void SortOutput();
-
-    /* load data from a file to the buffer */
-    void LoadDataToBuffer();
-
-    /* generate a mini-batch */
-    UInt64List LoadBatch(XTensor* batchEnc, XTensor* paddingEnc,
-        size_t sBatch, size_t wBatch, int devID);
-
-    /* initialization function */
-    void Init(const char* dataFile, const char* srcVocabFN, const char* tgtVocabFN);
-
     /* check if the buffer is empty */
     bool IsEmpty();
 
-    /* dump the translations to a file */
-    void DumpRes(const char* ofn);
+    /* initialization function */
+    void Init(NMTConfig& myConfig, bool notUsed) override;
+
+    /* load a sample from the buffer */
+    Sample* LoadSample() override;
+
+    /* transfrom a line to a sequence */
+    Sample* LoadSample(string line);
+
+    /* load the samples into tensors from the buffer */
+    bool GetBatchSimple(XList* inputs, XList* info) override;
+
+    /* load the samples into the buffer (a list) */
+    bool LoadBatchToBuf() override;
+
+    /* constructor */
+    TranslateDataset();
 
     /* de-constructor */
-    ~DataSet();
+    ~TranslateDataset();
 };
-}
 
-#endif // __DATASET_H__
+} /* end of the nmt namespace */
+
+#endif /* __TRANSLATEDATASET_H__ */

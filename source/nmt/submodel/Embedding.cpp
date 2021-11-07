@@ -1,4 +1,4 @@
-/* NiuTrans.NMT - an open-source neural machine translation system.
+﻿/* NiuTrans.NMT - an open-source neural machine translation system.
  * Copyright (C) 2020 NiuTrans Research. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,54 +14,71 @@
  * limitations under the License.
  */
 
-/*
- * $Created by: XIAO Tong (xiaotong@mail.neu.edu.cn) 2018-08-01
- * $Modified by: HU Chi (huchinlp@gmail.com) 2020-07
- */
 
 #include "Embedding.h"
-#include "../Utility.h"
+#include "../Config.h"
 #include "../../niutensor/tensor/core/CHeader.h"
 
+/* the nmt namespace */
 namespace nmt
 {
+
+/* set the training flag */
+void Embedder::SetTrainingFlag(bool myIsTraining)
+{
+    isTraining = myIsTraining;
+}
 
 /* constructor */
 Embedder::Embedder()
 {
+    fp16 = false;
+    w = NULL;
+    shareEncDecEmb = false;
     devID = -1;
     vSize = -1;
     eSize = -1;
+    padIdx = -1;
     maxLength = -1;
+    isTraining = false;
 }
 
 /* de-constructor */
 Embedder::~Embedder()
 {
+    if (w)
+        DelTensor(w);
+    w = NULL;
 }
 
 /*
 initialize the model
 >> config - configurations of the model
->> isEnc - indicates if it is used for the encoder
+>> isEnc - indicates if it is a encoder module
 */
-void Embedder::InitModel(Config& config, bool isEnc)
+void Embedder::InitModel(NMTConfig& config, bool isEnc)
 {
-    devID = config.devID;
-    d = config.modelSize;
-    padIdx = config.padID;
-    eSize = config.embSize;
-    maxLength = config.maxPosition;
-    vSize = (isEnc) ? config.srcVocabSize : config.tgtVocabSize;
+    SetTrainingFlag(config.training.isTraining);
+    fp16 = config.common.useFP16;
+    shareEncDecEmb = config.model.shareEncDecEmb;
+    padIdx = config.model.pad;
+    devID = config.common.devID;
+    eSize = isEnc ? config.model.encEmbDim : config.model.decEmbDim;
+    maxLength = config.model.maxTgtLen; // TODO: reset the maxLength for src emb
+    vSize = isEnc ? config.model.srcVocabSize : config.model.tgtVocabSize;
 
-    InitTensor2D(&w, vSize, eSize, X_FLOAT, devID);
+    if (!w) {
+        w = NewTensor2D(vSize, eSize, fp16 ? X_FLOAT16 : X_FLOAT, devID);
 
-    maxLength = maxLength + 1 + 1;
-    DTYPE v = 1.0F / (float)sqrt((float)eSize);
-    w.SetDataRandn(0, v);
+        maxLength = maxLength + 1 + 1;
+        DTYPE v = 1.0F / (float)sqrt((float)eSize);
 
-    for (int i = 0; i < eSize; i++) {
-        w.Set2D(0.0F, padIdx, i);
+        if (isTraining) {
+            w->SetDataRandn(0, v);
+            for (int i = 0; i < eSize; i++) {
+                w->Set2D(0.0F, padIdx, i);
+            }
+        }
     }
 
     /* create the positional embedding matrix */
@@ -98,9 +115,6 @@ void Embedder::MakePosEmbedding(int length)
 
     posEmbeddingBase.SetData(data, posEmbeddingBase.unitNum);
 
-    if (w.dataType != posEmbeddingBase.dataType)
-        posEmbeddingBase = ConvertDataType(posEmbeddingBase, w.dataType);
-
     delete[] data;
 }
 
@@ -109,10 +123,9 @@ make the network
 >> input - the word indices
 >> nstep - the length of current sequence
 >> isDec - indicates whether it is decoder
->> isTraining - indicates whether it is training
 << return - word & position embeddings of the input
 */
-XTensor Embedder::Make(XTensor& input, bool isDec, bool isTraining, int nstep)
+XTensor Embedder::Make(XTensor& input, bool isDec, int nstep)
 {
     /* make sure the padding index is 1 */
     CheckNTErrors(input.order > 1, "Wrong input tensor size!");
@@ -124,15 +137,11 @@ XTensor Embedder::Make(XTensor& input, bool isDec, bool isTraining, int nstep)
 
     InitTensor1D(&position, input.GetDim(-1), X_INT, devID);
 
-    if (!isDec || isTraining || input.GetDim(-1) > 1)
-    {
+    if (!isDec || isTraining || input.GetDim(-1) > 1) {
         position.Range(0, position.unitNum, 1);
-
-        // disable grad
         ScaleAndShiftMe(position, 1.0F, float(padIdx + 1));
     }
-    else
-    {
+    else {
         /* decoder embeddings during decoding */
         position.SetDataFixed(nstep + padIdx + 1);
     }
@@ -143,9 +152,12 @@ XTensor Embedder::Make(XTensor& input, bool isDec, bool isTraining, int nstep)
     posEmbedding = Unsqueeze(embTMP, 0, input.GetDim(0));
 
     /* then we make word embeddings */
-    wordEmbedding = Gather(w, input);
+    wordEmbedding = Gather(*w, input);
 
-    wordEmbedding = Linear(wordEmbedding, (float)sqrt((float)eSize), 0.0F, true);
+    if (isTraining)
+        wordEmbedding = Linear(wordEmbedding, sqrtf((float)eSize), 0.0F, true);
+    else
+        ScaleMe(wordEmbedding, sqrtf((float)eSize));
 
     /* we sum over the two embeddings */
     SumMe(wordEmbedding, posEmbedding);
@@ -153,4 +165,4 @@ XTensor Embedder::Make(XTensor& input, bool isDec, bool isTraining, int nstep)
     return wordEmbedding;
 }
 
-}
+} /* end of the nmt namespace */

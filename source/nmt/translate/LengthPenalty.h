@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+
 /*
  * $Created by: XIAO Tong (xiaotong@mail.neu.edu.cn) 2019-04-08
  * Start of a new week - I just finished several documents.
@@ -24,11 +25,11 @@
 #ifndef __LENGTHPENALTY_H__
 #define __LENGTHPENALTY_H__
 
-#include "../Utility.h"
 #include "../../niutensor/tensor/XTensor.h"
 
 using namespace nts;
 
+/* the nmt namespace */
 namespace nmt
 {
 
@@ -43,6 +44,6 @@ public:
     static float GNMT(float length, float alpha);
 };
 
-}
+} /* end of the nmt namespace */
 
-#endif
+#endif /* __LENGTHPENALTY_H__ */

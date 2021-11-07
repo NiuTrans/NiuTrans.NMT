@@ -1,6 +1,6 @@
 # Compilation Example
 
-Here is some compilation example for Linux with MKL, OpenBLAS, or CUDA supported. 
+Here are some compilation examples for Linux with MKL, OpenBLAS, or CUDA supported. 
 
 **Replace the path in your environment.**
 
@@ -14,9 +14,20 @@ mv NiuTensor/source NiuTrans.NMT/source/niutensor
 rm NiuTrans.NMT/source/niutensor/Main.cpp
 rm -rf NiuTrans.NMT/source/niutensor/sample NiuTrans.NMT/source/niutensor/tensor/test
 mkdir NiuTrans.NMT/build && cd NiuTrans.NMT/build
-cmake -DUSE_CUDA=ON -DCUDA_TOOLKIT_ROOT_DIR='/home/nlplab/cuda9.2/' ..
+cmake -DUSE_CUDA=ON -DCUDA_TOOLKIT_ROOT='/home/huchi/cuda-10.2/' -DGPU_ARCH=V ..
 make -j
 ```
+
+You may modify `DGPU_ARCH` with other GPU architectures:
+
+K：Kepler
+M：Maxwell
+P：Pascal
+V：Volta
+T：Turing
+A：Ampere
+
+See the [NVIDIA's official page](https://developer.nvidia.com/cuda-gpus#compute) for more details.
 
 ## Compile with CUDA and FP16 supported
 
@@ -28,7 +39,7 @@ mv NiuTensor/source NiuTrans.NMT/source/niutensor
 rm NiuTrans.NMT/source/niutensor/Main.cpp
 rm -rf NiuTrans.NMT/source/niutensor/sample NiuTrans.NMT/source/niutensor/tensor/test
 mkdir NiuTrans.NMT/build && cd NiuTrans.NMT/build
-cmake -DUSE_CUDA=ON -DCUDA_TOOLKIT_ROOT_DIR='/home/nlplab/cuda9.2/' -DUSE_FP16=ON ..
+cmake -DUSE_CUDA=ON -DCUDA_TOOLKIT_ROOT='/home/huchi/cuda-10.2/' -DGPU_ARCH=V -DUSE_HALF_PRECISION=ON ..
 make -j
 ```
 

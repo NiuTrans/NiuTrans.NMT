@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+
 /*
  * $Created by: XIAO Tong (xiaotong@mail.neu.edu.cn) 2019-03-13
  * This is the first source file I create in 2019 - new start!
@@ -28,6 +29,7 @@
 
 using namespace std;
 
+/* the nmt namespace */
 namespace nmt
 {
 
@@ -125,7 +127,7 @@ class Predictor
 {
 private:
     /* pointer to the transformer model */
-    Model* m;
+    NMTModel* m;
 
     /* current state */
     StateBundle* s;
@@ -144,13 +146,13 @@ public:
     ~Predictor();
 
     /* create an initial state */
-    void Create(Model* model, XTensor* top, const XTensor* input, int beamSize, StateBundle* state);
+    void Create(NMTModel* model, XTensor* top, const XTensor* input, int beamSize, StateBundle* state);
 
     /* set the start symbol */
     void SetStartSymbol(int symbol);
 
     /* read a state */
-    void Read(Model* model, StateBundle* state);
+    void Read(NMTModel* model, StateBundle* state);
 
     /* predict the next state */
     void Predict(StateBundle* next, XTensor& aliveIndices, XTensor& encoding,
@@ -164,6 +166,6 @@ public:
     XTensor GetLastPrediction(StateBundle* state, int devID);
 };
 
-}
+} /* end of the nmt namespace */
 
-#endif
+#endif /* __PREDICTOR_H__ */

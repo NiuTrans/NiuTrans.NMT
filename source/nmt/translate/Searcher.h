@@ -14,19 +14,21 @@
  * limitations under the License.
  */
 
+
 /*
  * $Created by: XIAO Tong (xiaotong@mail.neu.edu.cn) 2019-03-27
  * $Modified by: HU Chi (huchinlp@gmail.com) 2020-04, 2020-06
  */
 
-#ifndef __SEARCH_H__
-#define __SEARCH_H__
+#ifndef __SEARCHER_H__
+#define __SEARCHER_H__
 
 #include "../Model.h"
 #include "Predictor.h"
 
 using namespace std;
 
+/* the nmt namespace */
 namespace nmt
 {
 
@@ -44,7 +46,7 @@ private:
     Predictor predictor;
 
     /* max length of the generated sequence */
-    int maxLength;
+    int maxLen;
 
     /* beam size */
     int beamSize;
@@ -87,10 +89,10 @@ public:
     ~BeamSearch();
 
     /* initialize the model */
-    void Init(Config& config);
+    void Init(NMTConfig& config);
 
     /* search for the most promising states */
-    void Search(Model* model, XTensor& input, XTensor& padding, IntList* output, XTensor& score);
+    void Search(NMTModel* model, XTensor& input, XTensor& padding, IntList** output, XTensor& score);
 
     /* preparation */
     void Prepare(int myBatchSize, int myBeamSize);
@@ -111,7 +113,7 @@ public:
     void FillHeap(StateBundle* beam);
 
     /* save the output sequences and score */
-    void Dump(IntList* output, XTensor* score);
+    void Dump(IntList** output, XTensor* score);
 
     /* check if the token is an end symbol */
     bool IsEnd(int token);
@@ -133,12 +135,8 @@ public:
 class GreedySearch
 {
 private:
-
-    /* predictor */
-    Predictor predictor;
-
     /* max length of the generated sequence */
-    int maxLength;
+    int maxLen;
 
     /* batch size */
     int batchSize;
@@ -156,6 +154,7 @@ private:
     float scalarMaxLength;
 
 public:
+
     /* constructor */
     GreedySearch();
 
@@ -163,10 +162,10 @@ public:
     ~GreedySearch();
 
     /* initialize the model */
-    void Init(Config& config);
+    void Init(NMTConfig& config);
 
     /* search for the most promising states */
-    void Search(Model* model, XTensor& input, XTensor& padding, IntList* output);
+    void Search(NMTModel* model, XTensor& input, XTensor& padding, IntList** outputs);
 
     /* preparation */
     void Prepare(int myBatchSize);
@@ -178,6 +177,6 @@ public:
     void SetEnd(const int* tokens, const int tokenNum);
 };
 
-}
+} /* end of the nmt namespace */
 
-#endif
+#endif /* __SEARCHER_H__ */
