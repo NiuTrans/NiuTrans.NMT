@@ -112,6 +112,14 @@ void Attention::InitModel(NMTConfig& config, bool isEnc, bool isSelfAtt)
     }
 }
 
+void print_shape(XTensor& x) {
+  for(int i=0;i<x.order;i++) {
+	printf(", %d", x.GetDim(i));
+  }
+};
+
+#define print_w_name(tensor) {printf("\n%s\n",#tensor);print_shape(tensor);}
+
 /*
 make the network
 >> k - keys, B * L * H 
@@ -140,20 +148,35 @@ XTensor Attention::Make(XTensor& k, XTensor& q, XTensor& v,
         k2 = MulAndShift(k, weightK, biasK);
         v2 = MulAndShift(v, weightV, biasV);
 
+        if (nhead > 1) {
+            q2 = Split(q2, q2.order - 1, nhead);
+            k2 = Split(k2, k2.order - 1, nhead);
+            v2 = Split(v2, v2.order - 1, nhead);
+        }
+
         if (useRPR && attType == SELF_ATT)
             return MakeRPRAttention(k2, q2, v2, mask, isEnc);
         return MakeAttention(k2, q2, v2, mask, isEnc);
     }
 
     else {
+        if (nhead > 1) {
+            q2 = Split(q2, q2.order - 1, nhead);
+        }
         if (attType == SELF_ATT) {
             k2 = MulAndShift(k, weightK, biasK);
             v2 = MulAndShift(v, weightV, biasV);
 
+            const int concat_dim = nhead > 1 ? 2 : 1;
+            if (nhead > 1) {
+                k2 = Split(k2, k2.order - 1, nhead);
+                v2 = Split(v2, v2.order - 1, nhead);
+            }
+
             /* if hit, we only concat the cache with the new token */
             if (!cache->miss) {
-                k2 = Concatenate(cache->key, k2, 1);
-                v2 = Concatenate(cache->value, v2, 1);
+                k2 = Concatenate(cache->key, k2, concat_dim);
+                v2 = Concatenate(cache->value, v2, concat_dim);
             }
             cache->key = k2;
             cache->value = v2;
@@ -168,6 +191,11 @@ XTensor Attention::Make(XTensor& k, XTensor& q, XTensor& v,
                 cache->key = MulAndShift(k, weightK, biasK);
                 cache->value = MulAndShift(v, weightV, biasV);
                 cache->miss = false;
+
+                if (nhead > 1) {
+                    cache->key = Split(cache->key, cache->key.order - 1, nhead);
+                    cache->value = Split(cache->value, cache->value.order - 1, nhead);
+                }
             }
 
             return MakeAttention(cache->key, q2, cache->value, mask, isEnc);
@@ -187,17 +215,7 @@ make the attention network given keys, queries and values (after linear transfor
 XTensor Attention::MakeAttention(XTensor& k, XTensor& q, XTensor& v, 
                                  XTensor* mask, bool isEnc)
 {
-    XTensor kheads;
-    XTensor vheads;
-
     const auto dataType = k.dataType;
-
-    /* multi head */
-    if (nhead > 1) {
-        q = Split(q, q.order - 1, nhead);
-        kheads = Split(k, k.order - 1, nhead);
-        vheads = Split(v, v.order - 1, nhead);
-    }
 
     XTensor att;
 
@@ -207,10 +225,7 @@ XTensor Attention::MakeAttention(XTensor& k, XTensor& q, XTensor& v,
         ScaleMe(q, 1.0F / (float)sqrt((float)kDim / nhead));
 
     /* scalar = softmax(Q * K^T / sqrt(dk)) * V */
-    if(nhead > 1)
-        att = BMMul(q, X_NOTRANS, kheads, X_TRANS);
-    else
-        att = BMMul(q, X_NOTRANS, k, X_TRANS);
+    att = BMMul(q, X_NOTRANS, k, X_TRANS);
 
     if (att.dataType == X_FLOAT16) {
         att = ConvertDataType(att, X_FLOAT);
@@ -231,10 +246,7 @@ XTensor Attention::MakeAttention(XTensor& k, XTensor& q, XTensor& v,
     if (dataType != att.dataType)
         att = ConvertDataType(att, dataType);
     
-    if (nhead > 1)
-        att = BMMul(att, vheads);
-    else
-        att = BMMul(att, v);
+    att = BMMul(att, v);
 
     /* concatenate the heads */
     if (nhead > 1)
