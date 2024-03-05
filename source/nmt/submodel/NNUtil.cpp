@@ -34,9 +34,9 @@ a wrapper for the gather function
 XTensor AutoGather(XTensor& src, XTensor& index)
 {
 
-    if (src.order == 2)
+    if (src.order == 2) {
         return Gather(src, index);
-    else {
+    } else if (src.order == 3) {
         CheckNTErrors(src.order == 3, "the source must be 3d");
 
         int order = src.order;
@@ -55,6 +55,25 @@ XTensor AutoGather(XTensor& src, XTensor& index)
 
         res.Reshape(order, dimSize);
         return res;
+    } else {
+        CheckNTErrors(src.order == 4, "The order of the input tensor must be 4!");
+        CheckNTErrors(index.order == 1, "The order of the index tensor must be 1!");
+    
+        int order = src.order;
+        int* dimSize = new int[order];
+      
+        for(int i=0;i<src.order;i++) {
+          if(i==1) dimSize[i] = index.unitNum;
+          else dimSize[i] = src.dimSize[i];
+        }
+    
+        float dr = (!src.isSparse) ? 1.0F : src.denseRatio;
+        XTensor t(order, dimSize, src.dataType, dr, src.devID, src.mem);
+        t.SetTMPFlag();
+        struct UpdateStateParams params{dimSize[0], src.dimSize[1], dimSize[1], dimSize[2], dimSize[3]};
+        updateState(&src, &index, params, &t);
+        delete [] dimSize;
+        return t;
     }
 }
 

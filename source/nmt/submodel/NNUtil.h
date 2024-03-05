@@ -25,6 +25,7 @@
 #include "../../niutensor/tensor/XGlobal.h"
 #include "../../niutensor/tensor/core/CHeader.h"
 #include "../../niutensor/tensor/function/FHeader.h"
+#include "UpdateState.cuh"
 
 using namespace nts;
 
