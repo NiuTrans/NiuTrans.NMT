@@ -29,17 +29,20 @@ namespace nmt {
   }
   
   void updateState(XTensor *s, XTensor* index, struct UpdateStateParams params, XTensor* t) {
-    dim3 blocks(params.tgt_batch_size, params.num_head);
-    dim3 threads(128);
-  
     int devID = s->devID;
     int devIDBackup;
     ProtectCudaDev(devID, devIDBackup);
 
+    dim3 blocks(params.tgt_batch_size, params.num_head);
+
+    dim3 threads(params.seqlen*params.head_dim > GDevs.GPUs[devID].GPUMaxThreadNumPerBlock ?
+                 GDevs.GPUs[devID].GPUMaxThreadNumPerBlock :
+                 params.seqlen*params.head_dim );
+
     updateStateKernel<<<blocks, threads>>>(static_cast<float*>(s->data),
-                                static_cast<int*>(index->data),
-                                params,
-                                static_cast<float*>(t->data));
+                                           static_cast<int*>(index->data),
+                                           params,
+                                           static_cast<float*>(t->data));
 
     BacktoCudaDev(devID, devIDBackup);
   }

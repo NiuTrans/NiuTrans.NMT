@@ -8,11 +8,11 @@
 using namespace nts;
 namespace nmt {
   struct UpdateStateParams {
-    const int num_head;
-    const int src_batch_size;
-    const int tgt_batch_size;
-    const int seqlen;
-    const int head_dim;
+    const uint32_t num_head;
+    const uint32_t src_batch_size;
+    const uint32_t tgt_batch_size;
+    const uint32_t seqlen;
+    const uint32_t head_dim;
   };
   
   void updateState(XTensor *s, XTensor* index, struct UpdateStateParams params, XTensor* t);
