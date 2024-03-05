@@ -17,6 +17,7 @@
 
 /*
  * $Created by: HU Chi (huchinlp@foxmail.com) 2020-03-21
+  * $Modified by: umiswing (umiswing@foxmail.com) 2024-03
  */
 
 #include "NNUtil.h"
@@ -56,6 +57,7 @@ XTensor AutoGather(XTensor& src, XTensor& index)
         res.Reshape(order, dimSize);
         return res;
     } else {
+        // umiswing: This branch assumes that src has the shape with (N, B, L, H).
         CheckNTErrors(src.order == 4, "The order of the input tensor must be 4!");
         CheckNTErrors(index.order == 1, "The order of the index tensor must be 1!");
     
@@ -70,7 +72,7 @@ XTensor AutoGather(XTensor& src, XTensor& index)
         float dr = (!src.isSparse) ? 1.0F : src.denseRatio;
         XTensor t(order, dimSize, src.dataType, dr, src.devID, src.mem);
         t.SetTMPFlag();
-        struct UpdateStateParams params{dimSize[0], src.dimSize[1], dimSize[1], dimSize[2], dimSize[3]};
+        const struct UpdateStateParams params{dimSize[0], src.dimSize[1], dimSize[1], dimSize[2], dimSize[3]};
         updateState(&src, &index, params, &t);
         delete [] dimSize;
         return t;

@@ -18,6 +18,7 @@
  /*
   * $Created by: XIAO Tong (xiaotong@mail.neu.edu.cn) 2018-07-31
   * $Modified by: HU Chi (huchinlp@gmail.com) 2020-04, 2020-06
+  * $Modified by: umiswing (umiswing@foxmail.com) 2024-03
   */
 
 #include "Attention.h"
@@ -112,21 +113,13 @@ void Attention::InitModel(NMTConfig& config, bool isEnc, bool isSelfAtt)
     }
 }
 
-void print_shape(XTensor& x) {
-  for(int i=0;i<x.order;i++) {
-	printf(", %d", x.GetDim(i));
-  }
-};
-
-#define print_w_name(tensor) {printf("\n%s\n",#tensor);print_shape(tensor);}
-
 /*
 make the network
->> k - keys, B * L * H 
-       where B = batch size, L = sequence length,
+>> k - keys, B * L * H or N * B * L * H (when N > 1 and not using rpr attn).
+       where N = num head, B = batch size, L = sequence length,
        and H = vector size of each position
->> q - queries, B * L * H for encoders, B * 1 * H for decoders during inference
->> v - values, B * L * H 
+>> q - queries, B * L * H or N * B * L * H for encoders, B * 1 * H or N * B * 1 * H for decoders during inference
+>> v - values, B * L * H or N * B * L * H
 >> mask - as it is
 >> isTraining - indicates whether the model is used for training
 >> cache - decoder cache
@@ -137,6 +130,8 @@ XTensor Attention::Make(XTensor& k, XTensor& q, XTensor& v,
                         XTensor* mask, Cache* cache, int attType)
 {
     const bool isEnc = (!cache) ? true : false;
+    // TODO(umiswing): support new kv cache layout in rpr attn.
+    const bool split_in_kv_cache = nhead > 1 && !useRPR;
 
     /* linear transformation before self-attention */
     XTensor q2, k2, v2;
@@ -148,7 +143,7 @@ XTensor Attention::Make(XTensor& k, XTensor& q, XTensor& v,
         k2 = MulAndShift(k, weightK, biasK);
         v2 = MulAndShift(v, weightV, biasV);
 
-        if (nhead > 1) {
+        if (split_in_kv_cache) {
             q2 = Split(q2, q2.order - 1, nhead);
             k2 = Split(k2, k2.order - 1, nhead);
             v2 = Split(v2, v2.order - 1, nhead);
@@ -160,15 +155,15 @@ XTensor Attention::Make(XTensor& k, XTensor& q, XTensor& v,
     }
 
     else {
-        if (nhead > 1) {
+        if (split_in_kv_cache) {
             q2 = Split(q2, q2.order - 1, nhead);
         }
         if (attType == SELF_ATT) {
             k2 = MulAndShift(k, weightK, biasK);
             v2 = MulAndShift(v, weightV, biasV);
 
-            const int concat_dim = nhead > 1 ? 2 : 1;
-            if (nhead > 1) {
+            const int concat_dim = split_in_kv_cache ? 2 : 1;
+            if (split_in_kv_cache) {
                 k2 = Split(k2, k2.order - 1, nhead);
                 v2 = Split(v2, v2.order - 1, nhead);
             }
@@ -192,7 +187,7 @@ XTensor Attention::Make(XTensor& k, XTensor& q, XTensor& v,
                 cache->value = MulAndShift(v, weightV, biasV);
                 cache->miss = false;
 
-                if (nhead > 1) {
+                if (split_in_kv_cache) {
                     cache->key = Split(cache->key, cache->key.order - 1, nhead);
                     cache->value = Split(cache->value, cache->value.order - 1, nhead);
                 }

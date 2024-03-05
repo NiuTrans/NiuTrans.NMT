@@ -1,19 +1,36 @@
+/* NiuTrans.NMT - an open-source neural machine translation system.
+ * Copyright (C) 2024 NiuTrans Research. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*
+ * $Created by: umiswing (umiswing@foxmail.com) 2024-03
+ */
+
 #include "UpdateState.cuh"
 
 namespace nmt {
 
-  // src (N, B, L, H)
-  // tgt (N, B, L, H)
-  // index (B)
   __global__ void updateStateKernel(const float* const src,
                                     const int* const index,
                                     const UpdateStateParams params,
                                     float * const tgt) {
-    // niutensor doesn't guarantee 128-bit aligned.
-    // TODO(umiswing): Use 128-bit load after 128-bit aligned support.
-    constexpr int ELEMENTS_PER_THREAD = 1;
-    const int THREADS_PER_BLOCK = blockDim.x;
-    const int ELEMENTS_PER_BLOCK = ELEMENTS_PER_THREAD * THREADS_PER_BLOCK;
+    // TODO(umiswing): niutensor doesn't guarantee 128-bit aligned.
+    // Use 128-bit loading after 128-bit aligned support.
+    constexpr int elements_per_thread = 1;
+    const int threads_per_block = blockDim.x;
+    const int elements_per_block = elements_per_thread * threads_per_block;
   
     const int src_hid = blockIdx.y;
     const int src_bid = index[blockIdx.x];
@@ -23,13 +40,16 @@ namespace nmt {
     const int tgt_bid = blockIdx.x;
     const int tgt_hbid = (tgt_hid * params.tgt_batch_size + tgt_bid) * params.seqlen * params.head_dim;
     #pragma unroll
-    for(int i=threadIdx.x*ELEMENTS_PER_THREAD;i<params.seqlen * params.head_dim / ELEMENTS_PER_THREAD;i+=ELEMENTS_PER_BLOCK) {
+    for(int i=threadIdx.x*elements_per_thread;i<params.seqlen * params.head_dim / elements_per_thread;i+=elements_per_block) {
       tgt[tgt_hbid+i] = src[src_hbid+i];
     }
   }
-  
-  void updateState(XTensor *s, XTensor* index, struct UpdateStateParams params, XTensor* t) {
-    int devID = s->devID;
+
+  void updateState(const XTensor* const src,
+                   const XTensor* const index,
+                   const struct UpdateStateParams params,
+                   XTensor* const tgt) {
+    int devID = src->devID;
     int devIDBackup;
     ProtectCudaDev(devID, devIDBackup);
 
@@ -39,11 +59,11 @@ namespace nmt {
                  GDevs.GPUs[devID].GPUMaxThreadNumPerBlock :
                  params.seqlen*params.head_dim );
 
-    updateStateKernel<<<blocks, threads>>>(static_cast<float*>(s->data),
+    updateStateKernel<<<blocks, threads>>>(static_cast<float*>(src->data),
                                            static_cast<int*>(index->data),
                                            params,
-                                           static_cast<float*>(t->data));
+                                           static_cast<float*>(tgt->data));
 
     BacktoCudaDev(devID, devIDBackup);
   }
-}
+} /* end of the nmt namespace */
