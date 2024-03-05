@@ -18,8 +18,8 @@
  * $Created by: umiswing (umiswing@foxmail.com) 2024-03
  */
 
-#ifndef __UPDATESTATE_CUH_
-#define __UPDATESTATE_CUH_
+#ifndef __UPDATESTATE_CUH__
+#define __UPDATESTATE_CUH__
 #include <stdint.h>
 #include "../../niutensor/tensor/XGlobal.h"
 #include "../../niutensor/tensor/core/CHeader.h"
@@ -27,6 +27,9 @@
 
 using namespace nts;
 namespace nmt {
+
+#ifdef USE_CUDA
+
   struct UpdateStateParams {
     uint32_t num_head;
     uint32_t src_batch_size;
@@ -45,5 +48,7 @@ namespace nmt {
                    const XTensor* const index,
                    const struct UpdateStateParams params,
                    XTensor* const t);
+#endif // USE_CUDA
 } /* end of the nmt namespace */
-#endif
+
+#endif // __UPDATESTATE_CUH__

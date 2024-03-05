@@ -22,6 +22,8 @@
 
 namespace nmt {
 
+#ifdef USE_CUDA
+
   __global__ void updateStateKernel(const float* const src,
                                     const int* const index,
                                     const UpdateStateParams params,
@@ -49,6 +51,17 @@ namespace nmt {
                    const XTensor* const index,
                    const struct UpdateStateParams params,
                    XTensor* const tgt) {
+    CheckNTErrors(src != nullptr &&
+                  index != nullptr &&
+                  tgt != nullptr,
+                  "Invalid tensor!");
+    CheckNTErrors(src->dataType == X_FLOAT, "only support state with type X_FLOAT now!");
+    CheckNTErrors(tgt->dataType == X_FLOAT, "only support state with type X_FLOAT now!");
+    CheckNTErrors(index->dataType == X_INT, "index must be type X_INT!");
+    CheckNTErrors(src->devID >= 0, "the state must be kept on the gpu!");
+    CheckNTErrors(src->devID == tgt->devID, "the state must be kept on the same device!");
+    CheckNTErrors((src->unitSize == tgt->unitSize), "Unmatched tensors!");
+
     int devID = src->devID;
     int devIDBackup;
     ProtectCudaDev(devID, devIDBackup);
@@ -66,4 +79,6 @@ namespace nmt {
 
     BacktoCudaDev(devID, devIDBackup);
   }
+#endif // USE_CUDA
+
 } /* end of the nmt namespace */

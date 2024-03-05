@@ -57,6 +57,7 @@ XTensor AutoGather(XTensor& src, XTensor& index)
         res.Reshape(order, dimSize);
         return res;
     } else {
+#ifdef USE_CUDA
         // umiswing: This branch assumes that src has the shape with (N, B, L, H).
         CheckNTErrors(src.order == 4, "The order of the input tensor must be 4!");
         CheckNTErrors(index.order == 1, "The order of the index tensor must be 1!");
@@ -76,6 +77,9 @@ XTensor AutoGather(XTensor& src, XTensor& index)
         updateState(&src, &index, params, &t);
         delete [] dimSize;
         return t;
+#else
+        ShowNTErrors("the source must be 2d or 3d!");
+#endif
     }
 }
 
