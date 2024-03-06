@@ -78,7 +78,7 @@ namespace nmt {
 
     // split along (L, H)
     // TODO(umiswing): add heuristic (maybe)
-    const int loads_per_block = 128*128;
+    const int loads_per_block = 2;
     const int max_split_size = GDevs.GPUs[devID].GPUMaxThreadNumPerBlock * loads_per_block;
     const int split_size = sh_num > max_split_size ? max_split_size : sh_num;
     const int num_split = (sh_num + split_size - 1) / split_size;
