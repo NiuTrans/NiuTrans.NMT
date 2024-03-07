@@ -1,5 +1,5 @@
 /* NiuTrans.NMT - an open-source neural machine translation system.
- * Copyright (C) 2020 NiuTrans Research. All rights reserved.
+ * Copyright (C) 2024 NiuTrans Research. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,28 +14,37 @@
  * limitations under the License.
  */
 
-
-/*
- * $Created by: HU Chi (huchinlp@foxmail.com) 2020-03-21
- */
-
-#ifndef __NNUTIL_H__
-#define __NNUTIL_H__
-
+#ifndef __UPDATESTATE_CUH__
+#define __UPDATESTATE_CUH__
+#include <stdint.h>
 #include "../../niutensor/tensor/XGlobal.h"
 #include "../../niutensor/tensor/core/CHeader.h"
-#include "../../niutensor/tensor/function/FHeader.h"
-#include "UpdateState.cuh"
+#include "../../niutensor/tensor/XDevice.h"
 
 using namespace nts;
+namespace nmt {
 
-/* the nmt namespace */
-namespace nmt
-{
+#ifdef USE_CUDA
 
-/* the gather function for tensor with any dimension */
-XTensor AutoGather(XTensor& src, XTensor& index);
+  struct UpdateStateParams {
+    uint32_t num_head;
+    uint32_t src_batch_size;
+    uint32_t tgt_batch_size;
+    uint32_t seqlen;
+    uint32_t head_dim;
+  };
 
+  /* 
+  Update kv cache state.
+  >> src - (N, B, L, H)
+  >> index - (B)
+  << tgt - (N, B, L, H)
+  */
+  void updateState(const XTensor* const s,
+                   const XTensor* const index,
+                   const struct UpdateStateParams params,
+                   XTensor* const t);
+#endif // USE_CUDA
 } /* end of the nmt namespace */
 
-#endif /* __NNUTIL_H__ */
+#endif // __UPDATESTATE_CUH__
