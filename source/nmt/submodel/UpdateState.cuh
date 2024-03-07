@@ -14,10 +14,6 @@
  * limitations under the License.
  */
 
-/*
- * $Created by: umiswing (umiswing@foxmail.com) 2024-03
- */
-
 #ifndef __UPDATESTATE_CUH__
 #define __UPDATESTATE_CUH__
 #include <stdint.h>

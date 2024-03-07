@@ -14,10 +14,6 @@
  * limitations under the License.
  */
 
-/*
- * $Created by: umiswing (umiswing@foxmail.com) 2024-03
- */
-
 #include "UpdateState.cuh"
 
 namespace nmt {
@@ -29,7 +25,7 @@ namespace nmt {
                                     const UpdateStateParams params,
                                     const int split_size,
                                     float * const tgt) {
-    // TODO(umiswing): niutensor doesn't guarantee 128-bit aligned.
+    // TODO: niutensor doesn't guarantee 128-bit aligned.
     // Use 128-bit loading after 128-bit aligned support.
     constexpr int elements_per_thread = 1;
     const int threads_per_block = blockDim.x;
@@ -77,8 +73,8 @@ namespace nmt {
     const auto sh_num = params.seqlen * params.head_dim;
 
     // split along (L, H)
-    // TODO(umiswing): add heuristic (maybe)
-    const int loads_per_block = 2;
+    // TODO: add heuristic (maybe)
+    const int loads_per_block = UPDATE_STATE_LOADS_PER_BLOCK;
     const int max_split_size = GDevs.GPUs[devID].GPUMaxThreadNumPerBlock * loads_per_block;
     const int split_size = sh_num > max_split_size ? max_split_size : sh_num;
     const int num_split = (sh_num + split_size - 1) / split_size;
@@ -87,8 +83,6 @@ namespace nmt {
 
     dim3 threads((split_size + loads_per_block - 1) / loads_per_block);
 
-    // Pzzzzz5142: why not thrust?
-    // umiswing: just for fun. and this kernel will be removed in the future.
     updateStateKernel<<<blocks, threads>>>(static_cast<float*>(src->data),
                                            static_cast<int*>(index->data),
                                            params,

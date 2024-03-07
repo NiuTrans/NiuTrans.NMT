@@ -17,7 +17,6 @@
 
 /*
  * $Created by: HU Chi (huchinlp@foxmail.com) 2020-03-21
-  * $Modified by: umiswing (umiswing@foxmail.com) 2024-03
  */
 
 #include "NNUtil.h"
@@ -58,7 +57,7 @@ XTensor AutoGather(XTensor& src, XTensor& index)
         return res;
     } else {
 #ifdef USE_CUDA
-        // umiswing: This branch assumes that src has the shape with (N, B, L, H).
+        // This branch assumes that src has the shape with (N, B, L, H).
         CheckNTErrors(src.order == 4, "The order of the input tensor must be 4!");
         CheckNTErrors(index.order == 1, "The order of the index tensor must be 1!");
     

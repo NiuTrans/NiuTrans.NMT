@@ -18,7 +18,6 @@
  /*
   * $Created by: XIAO Tong (xiaotong@mail.neu.edu.cn) 2018-07-31
   * $Modified by: HU Chi (huchinlp@gmail.com) 2020-04, 2020-06
-  * $Modified by: umiswing (umiswing@foxmail.com) 2024-03
   */
 
 #include "Attention.h"
@@ -130,7 +129,7 @@ XTensor Attention::Make(XTensor& k, XTensor& q, XTensor& v,
                         XTensor* mask, Cache* cache, int attType)
 {
     const bool isEnc = (!cache) ? true : false;
-    // TODO(umiswing): support new kv cache layout in rpr attn.
+    // TODO: support new kv cache layout in rpr attn.
     const bool split_in_kv_cache = nhead > 1 && !useRPR;
 
     /* linear transformation before self-attention */
